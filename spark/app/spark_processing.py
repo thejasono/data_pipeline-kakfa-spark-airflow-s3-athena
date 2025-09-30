@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional  # keep once
+from typing import Optional
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
@@ -13,19 +13,41 @@ logging.basicConfig(
 logger = logging.getLogger("spark_structured_streaming")
 
 
-def initialize_spark_session_with_keys(app_name: str,
-                                       access_key: str,
-                                       secret_key: str) -> SparkSession:
-    try:
-        spark = (
-            SparkSession.builder
-            .appName(app_name)
-            .config("spark.hadoop.fs.s3a.aws.credentials.provider",
-                    "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
-            .config("spark.hadoop.fs.s3a.access.key", access_key)
-            .config("spark.hadoop.fs.s3a.secret.key", secret_key)
-            .getOrCreate()
+def _configure_s3_credentials(builder: SparkSession.Builder,
+                              access_key: str,
+                              secret_key: str) -> SparkSession.Builder:
+    """Apply static AWS credentials to a Spark builder."""
+    return (
+        builder
+        .config(
+            "spark.hadoop.fs.s3a.aws.credentials.provider",
+            "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
         )
+        .config("spark.hadoop.fs.s3a.access.key", access_key)
+        .config("spark.hadoop.fs.s3a.secret.key", secret_key)
+    )
+
+
+def initialize_spark_session(app_name: str,
+                             *,
+                             region: str,
+                             access_key: Optional[str] = None,
+                             secret_key: Optional[str] = None) -> SparkSession:
+    """Create a SparkSession with optional static AWS credentials."""
+    builder = SparkSession.builder.appName(app_name)
+
+    if access_key and secret_key:
+        builder = _configure_s3_credentials(builder, access_key, secret_key)
+    else:
+        builder = builder.config(
+            "spark.hadoop.fs.s3a.aws.credentials.provider",
+            "com.amazonaws.auth.DefaultAWSCredentialsProviderChain",
+        )
+
+    builder = builder.config("spark.hadoop.fs.s3a.region", region)
+
+    try:
+        spark = builder.getOrCreate()
         spark.sparkContext.setLogLevel("ERROR")
         return spark
     except Exception:
@@ -99,21 +121,12 @@ def main():
 
     s3_region = os.environ.get("S3_REGION", "us-east-1")
 
-    s3_access_key = os.environ.get("S3_ACCESS_KEY")
-    s3_secret_key = os.environ.get("S3_SECRET_KEY")
-
-    if s3_access_key and s3_secret_key:
-        spark = initialize_spark_session_with_keys(app_name, s3_access_key, s3_secret_key)
-    else:
-        spark = (
-            SparkSession.builder
-            .appName(app_name)
-            .config("spark.hadoop.fs.s3a.aws.credentials.provider",
-                    "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
-            .config("spark.hadoop.fs.s3a.region", s3_region)  # optional
-            .getOrCreate()
-        )
-        spark.sparkContext.setLogLevel("ERROR")
+    spark = initialize_spark_session(
+        app_name,
+        region=s3_region,
+        access_key=os.environ.get("S3_ACCESS_KEY"),
+        secret_key=os.environ.get("S3_SECRET_KEY"),
+    )
 
     try:
         df = get_streaming_dataframe(spark, brokers, topic)

@@ -1,0 +1,4 @@
+confluent-kafka==2.5.0
+requests==2.31.0
+json5==0.9.25
+pyspark==3.5.1

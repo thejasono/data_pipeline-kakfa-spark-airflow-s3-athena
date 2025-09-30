@@ -1,0 +1,432 @@
+
+networks:
+  kafka_network:
+    driver: bridge
+  default:
+      name: docker_streaming
+      external: true
+
+volumes:
+  spark_data:
+  kafka_data: {}      # used by kafka:/var/lib/kafka/data
+  minio_data:
+
+x-airflow-image: &airflow-image custom-airflow:2.9.3-python3.11
+x-airflow-build: &airflow-build
+  context: .
+  dockerfile: Dockerfile.airflow
+
+x-spark-image: &spark-image custom-spark:3.5.1
+x-spark-build: &spark-build
+  context: ./spark
+  dockerfile: Dockerfile
+
+services:
+
+  # ==========================================================================
+  #  MINIO (S3-compatible object storage for local development)
+  # ==========================================================================
+  minio:
+    image: minio/minio:RELEASE.2024-09-22T00-33-43Z
+    container_name: minio
+    command: server /data --console-address ":${MINIO_CONSOLE_PORT:-9001}"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_SERVER_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+      - ./certs/minio/server:/root/.minio/certs:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "--cacert", "/root/.minio/certs/public.crt", "https://localhost:9000/minio/health/ready"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+    networks:
+      - default
+
+  minio_setup:
+    image: minio/mc:RELEASE.2024-09-16T17-43-14Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      - MINIO_BUCKET=${S3_BUCKET}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - ./certs/minio/client/public.crt:/tmp/minio-ca.crt:ro
+    entrypoint: |
+      /bin/sh -c "
+        set -euo pipefail
+        mkdir -p /root/.mc/certs/CAs
+        cp /tmp/minio-ca.crt /root/.mc/certs/CAs/minio-ca.crt
+        echo 'Configuring MinIO client alias...'
+        mc alias set local https://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
+        echo 'Ensuring bucket ${S3_BUCKET} exists...'
+        mc mb --ignore-existing local/${S3_BUCKET}
+        echo 'MinIO bootstrap complete.'
+        exit 0
+      "
+    networks:
+      - default
+    restart: "no"
+
+  airflow_db:
+    image: postgres:16.0
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}          # e.g., airflow
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}  # e.g., airflow
+      - POSTGRES_DB=${POSTGRES_DB}              # e.g., airflow_db
+    volumes:
+      - ./airflow_pgdata:/var/lib/postgresql/data
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 10
+
+  # ==========================================================================
+  #  APACHE AIRFLOW (Webserver only, LocalExecutor)
+  #  - For a real setup you'd often run: webserver + scheduler (+ workers on Celery/K8s)
+  #  - Note: LocalExecutor still needs the Scheduler service running to execute tasks.
+  # ==========================================================================
+
+  airflow-init:
+    image: *airflow-image
+    build: *airflow-build
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airflow_db:5432/${POSTGRES_DB}
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Berlin
+      - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - TZ=${TZ:-Europe/Berlin}
+    user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
+    command:
+      - bash
+      - -lc
+      - |
+        set -euo pipefail
+        airflow db migrate
+        # Create admin user if it doesn't already exist
+        airflow users create \
+          --role Admin \
+          --username "${AIRFLOW_ADMIN_USER:-admin}" \
+          --email "${AIRFLOW_ADMIN_EMAIL:-admin@example.com}" \
+          --firstname "${AIRFLOW_ADMIN_FN:-admin}" \
+          --lastname "${AIRFLOW_ADMIN_LN:-admin}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD:-admin}" || true
+    restart: "no"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./dags/producer:/opt/airflow/dags/producer
+      - ./plugins:/opt/airflow/plugins
+
+  airflow_webserver:
+    image: *airflow-image
+    build: *airflow-build
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airflow_db:5432/${POSTGRES_DB}
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Berlin
+      - AIRFLOW__CORE__PARALLELISM=8
+      - AIRFLOW__CORE__DAG_CONCURRENCY=8
+      - AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG=1
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - AIRFLOW__WEBSERVER__WEB_SERVER_HOST=0.0.0.0
+      - AIRFLOW__WEBSERVER__WEB_SERVER_PORT=8080
+      - AIRFLOW_UID=${AIRFLOW_UID:-50000}
+      - TZ=${TZ:-Europe/Berlin}
+    user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
+    command: ["bash","-lc","exec airflow webserver"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health | grep -q '\"status\":.*\"healthy\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    ports: ["8080:8080"]
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./dags/producer:/opt/airflow/dags/producer
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    restart: unless-stopped
+
+  airflow_scheduler:
+    image: *airflow-image
+    build: *airflow-build
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airflow_db:5432/${POSTGRES_DB}
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Berlin
+      - AIRFLOW__CORE__PARALLELISM=8
+      - AIRFLOW__CORE__DAG_CONCURRENCY=8
+      - AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG=1
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - AIRFLOW_UID=${AIRFLOW_UID:-50000}
+      - TZ=${TZ:-Europe/Berlin}
+    user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
+    command: ["bash","-lc","exec airflow scheduler"]
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname $(hostname) >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./dags/producer:/opt/airflow/dags/producer
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    restart: unless-stopped
+
+  #  KAFKA (KRaft Mode) - Single Node (Broker + Controller in one process)
+  # ==========================================================================
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    environment:
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_NODE_ID=1
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:29093
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENERS=INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:19092,EXTERNAL://${DOCKER_HOST_IP:-localhost}:9092
+      - KAFKA_CLUSTER_ID=${KAFKA_CLUSTER_ID}
+      - CLUSTER_ID=${KAFKA_CLUSTER_ID} 
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data            # explicit
+      - KAFKA_LOG4J_LOGGERS=kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - kafka_network
+      - default
+
+  # ============================================================================
+  #  KAFKA CONNECT (managed source/sink connectors)
+  # ============================================================================
+  kafka_connect:
+    image: confluentinc/cp-kafka-connect:7.6.1
+    depends_on:
+      - kafka
+    ports:
+      - "8083:8083"
+    environment:
+      - CONNECT_BOOTSTRAP_SERVERS=kafka:19092
+      - CONNECT_REST_PORT=8083
+      - CONNECT_GROUP_ID=connect-cluster
+      - CONNECT_CONFIG_STORAGE_TOPIC=_connect-configs
+      - CONNECT_OFFSET_STORAGE_TOPIC=_connect-offsets
+      - CONNECT_STATUS_STORAGE_TOPIC=_connect-status
+      - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
+      - CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false
+      - CONNECT_PLUGIN_PATH=/usr/share/java,/etc/kafka-connect/jars
+      - CONNECT_LOG4J_ROOT_LOGLEVEL=INFO
+      - CONNECT_LOG4J_LOGGERS=org.reflections=ERROR
+      - CONNECT_OFFSET_FLUSH_INTERVAL_MS=5000
+      - CONNECT_REST_ADVERTISED_HOST_NAME=kafka_connect
+      - CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1
+    networks:
+      - kafka_network
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8083/connectors >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================================================
+  #  SCHEMA REGISTRY (works with KRaft; no ZooKeeper required)
+  # ============================================================================
+  kafka_schema_registry:
+    image: confluentinc/cp-schema-registry:7.6.1
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=${SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS:-PLAINTEXT://kafka:19092}
+      - SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL=${SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL:-PLAINTEXT}
+      - SCHEMA_REGISTRY_HOST_NAME=${SCHEMA_REGISTRY_HOST_NAME:-kafka_schema_registry}
+      - SCHEMA_REGISTRY_LISTENERS=${SCHEMA_REGISTRY_LISTENERS:-http://0.0.0.0:8081}
+      - SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR=1
+    networks:
+      - kafka_network
+      - default
+
+  # ============================================================================
+  #  KAFKA UI (Provectus)
+  # ============================================================================
+  kafka_ui:
+    image: provectuslabs/kafka-ui:v0.7.2            # pin to a fixed tag; avoid :latest
+    container_name: kafka-ui-1
+    depends_on:
+      - kafka
+      - kafka_schema_registry
+      - kafka_connect
+    ports:
+      - "8888:8080"                                  # http://localhost:8888
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=dev-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:19092
+      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://kafka_schema_registry:8081
+      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME=connect
+      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=http://kafka_connect:8083
+      - DYNAMIC_CONFIG_ENABLED=true
+    networks:
+      - kafka_network
+      - default
+
+  # ============================================================================
+  #  APACHE SPARK MASTER (Standalone mode)
+  # ============================================================================
+  spark-master:
+    image: *spark-image
+    build: *spark-build
+    # Build the custom Spark image once; other Spark services reuse this tag
+    # to avoid parallel build conflicts when running `docker compose up --build`.
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master   # advertise stable DNS to workers
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      # Security (dev = off). In production, enable:
+      # - SPARK_RPC_AUTHENTICATION_ENABLED=yes
+      # - SPARK_RPC_ENCRYPTION_ENABLED=yes
+      # These flags control RPC auth/encryption regardless of worker count.
+      # UI is 8080 in-container; remapped below to avoid clashes.
+      # - SPARK_UI_PORT=8080
+    ports:
+      - "8085:8080"                                  # Spark Master UI → http://localhost:8085
+    volumes:
+      - ./:/home
+      - spark_data:/opt/bitnami/spark/data
+      - ./certs/minio/client:/opt/minio/certs:ro
+    networks:
+      - default
+      - kafka_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080 | grep -q 'Spark Master'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  spark_worker_1:
+    image: *spark-image
+    depends_on: [spark-master]
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_WEBUI_PORT=8081
+    ports:
+      - "8086:8081"     # Worker-1 UI
+    networks: [default, kafka_network]
+    volumes:
+      - ./certs/minio/client:/opt/minio/certs:ro
+
+  spark_worker_2:
+    image: *spark-image
+    depends_on: [spark-master]
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_WEBUI_PORT=8081
+    ports:
+      - "8087:8081"     # Worker-2 UI
+    networks: [default, kafka_network]
+    volumes:
+      - ./certs/minio/client:/opt/minio/certs:ro
+
+  # ==========================================================================
+  #  SPARK STREAMING JOB (runs spark_processing.py automatically)
+  # ==========================================================================
+  spark_streaming:
+    image: *spark-image
+    depends_on:
+      spark-master:
+        condition: service_healthy
+      spark_worker_1:
+        condition: service_started
+      spark_worker_2:
+        condition: service_started
+      kafka:
+        condition: service_started
+      minio_setup:
+        condition: service_completed_successfully
+    environment:
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_OUTPUT_PREFIX=${S3_OUTPUT_PREFIX}
+      - S3_CHECKPOINT_PREFIX=${S3_CHECKPOINT_PREFIX}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:19092
+      - KAFKA_TOPIC=names_topic
+    command:
+      - bash
+      - -lc
+      - |
+        /opt/bitnami/spark/bin/spark-submit \
+          --master spark://spark-master:7077 \
+          --conf spark.driver.extraJavaOptions="-Djavax.net.ssl.trustStore=/opt/minio/certs/minio-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit" \
+          --conf spark.executor.extraJavaOptions="-Djavax.net.ssl.trustStore=/opt/minio/certs/minio-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit" \
+          /opt/spark/app/spark_processing.py
+    volumes:
+      - ./spark/app:/opt/spark/app
+      - spark_data:/opt/bitnami/spark/data
+      - ./certs/minio/client:/opt/minio/certs:ro
+    restart: unless-stopped
+    networks:
+      - default
+      - kafka_network

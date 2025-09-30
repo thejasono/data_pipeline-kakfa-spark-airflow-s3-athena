@@ -1,0 +1,4 @@
+airflow_pgdata/*
+!airflow_pgdata/.gitkeep
+__pycache__/
+*.pyc

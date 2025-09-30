@@ -1,0 +1,12 @@
+FROM apache/airflow:2.9.3-python3.11
+
+ARG AIRFLOW_VERSION=2.9.3
+ARG PYTHON_MAJOR_MINOR=3.11
+ARG AIRFLOW_CONSTRAINTS_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_MAJOR_MINOR}.txt"
+
+USER airflow
+COPY --chown=airflow:airflow requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir \
+        --constraint "${AIRFLOW_CONSTRAINTS_URL}" \
+        -r /tmp/requirements.txt \
+    && rm -f /tmp/requirements.txt

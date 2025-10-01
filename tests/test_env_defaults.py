@@ -15,7 +15,7 @@ def _load_env_value(key: str) -> str:
     raise AssertionError(f"Missing {key} entry in .env")
 
 
-def test_minio_endpoint_default_is_https_minio_9000() -> None:
+def test_s3_endpoint_default_targets_aws_regional_host() -> None:
     value = _load_env_value("S3_ENDPOINT")
-    assert value == "https://minio:9000"
+    assert value == "https://s3.eu-west-2.amazonaws.com"
 

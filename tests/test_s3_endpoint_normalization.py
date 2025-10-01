@@ -13,11 +13,11 @@ from spark.app.spark_processing import _normalize_s3_endpoint
 @pytest.mark.parametrize(
     "raw,expected_host,expected_ssl",
     [
-        ("http://minio:9000", "minio:9000", False),
-        ("https://minio:9000", "minio:9000", True),
-        ("minio:9000", "minio:9000", None),
-        ("MINIO:9000", "MINIO:9000", None),
-        ("https://play.min.io:9443", "play.min.io:9443", True),
+        ("https://s3.us-east-1.amazonaws.com", "s3.us-east-1.amazonaws.com", True),
+        ("http://s3.us-west-2.amazonaws.com", "s3.us-west-2.amazonaws.com", False),
+        ("s3.eu-west-2.amazonaws.com", "s3.eu-west-2.amazonaws.com", None),
+        ("S3.CUSTOM-ENDPOINT.EXAMPLE.COM", "S3.CUSTOM-ENDPOINT.EXAMPLE.COM", None),
+        ("https://objects.example.com:8443", "objects.example.com:8443", True),
     ],
 )
 def test_normalize_valid_inputs(raw, expected_host, expected_ssl):
@@ -33,11 +33,11 @@ def test_normalize_valid_inputs(raw, expected_host, expected_ssl):
         "   ",  # whitespace only
         None,  # explicit None should raise ValueError
         "http://",  # missing host
-        "https://minio:9000/bucket",  # unexpected path
-        "http://minio:9000/",  # trailing slash should fail fast
-        "minio:9000/",  # trailing slash without scheme
-        "minio:9000/extra",  # path without scheme
-        "http://minio:9000?foo=bar",  # query parameters are not supported
+        "https://s3.us-east-1.amazonaws.com/bucket",  # unexpected path
+        "http://s3.us-east-1.amazonaws.com/",  # trailing slash should fail fast
+        "s3.us-east-1.amazonaws.com/",  # trailing slash without scheme
+        "s3.us-east-1.amazonaws.com/extra",  # path without scheme
+        "http://s3.us-east-1.amazonaws.com?foo=bar",  # query parameters are not supported
     ],
 )
 def test_normalize_invalid_inputs(raw):

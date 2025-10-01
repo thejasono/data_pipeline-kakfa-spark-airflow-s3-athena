@@ -19,23 +19,12 @@ Docker will be our primary tool to orchestrate and run various services.
 - **Installation:** Visit Docker's official website to download and install Docker Desktop for your OS.
 - **Verification:** Open a terminal or command prompt and execute `docker --version` to ensure a successful installation.
 
-**b. Object storage (MinIO by default / AWS S3 optional):**
-Out of the box the stack now ships with a local [MinIO](https://min.io/) container that emulates the S3 API so you have an object store without touching AWS.
+**b. Object storage (AWS S3):**
+The pipeline writes JSON micro-batches directly to Amazon S3. Create a bucket in your preferred region and update the `.env` file with the bucket name, region, and (if necessary) temporary credentials. When the stack starts, the Spark streaming container uses those settings to persist data without any additional bootstrap services.
 
-- **Local sandbox:** When you start the compose file a `minio` service launches at `https://localhost:9000` with a management console on `https://localhost:9001`.
-- The repository ships with a self-signed certificate/key pair in [`certs/minio/server`](certs/minio/server) and the matching client trust bundle in [`certs/minio/client`](certs/minio/client). Those mounts, plus the pre-baked Java truststore, let Spark talk to MinIO over HTTPS (`https://minio:9000`) without extra flags. If you regenerate the TLS assets, just drop the replacement `public.crt`, `private.key`, and `minio-truststore.jks` back into the same directories and restart the containers—the compose file already mounts the correct paths so no other changes are required.
-- Import [`certs/minio/client/public.crt`](certs/minio/client/public.crt) into your host trust store (or point tooling at the file with `curl --cacert certs/minio/client/public.crt`) if you want to eliminate browser warnings. Everything inside the compose stack already trusts this CA, so you should no longer need to fall back to `-k/--insecure` flags.
-  - Default credentials (configurable in `.env`): `minioadmin / minioadmin`.
-  - A bucket called `streaming-demo` is auto-provisioned by the `minio_setup` helper container.
-- **No extra access key setup required:** MinIO uses the root user and password as the access key / secret key pair. If you skip
-  populating `MINIO_ROOT_USER` or `MINIO_ROOT_PASSWORD`, the container exits with a `Invalid access key` error before it can pass
-  the health check. The compose file now falls back to `minioadmin/minioadmin`, so the service starts even if you forget to load
-  the `.env` file, but you should still customise those values for your own environment.
-- **Validating TLS:** From the project root you can confirm the certificate chain with `openssl s_client -connect localhost:9000 -CAfile certs/minio/client/public.crt`. A successful handshake and `Verify return code: 0 (ok)` proves the MinIO API is serving the bundled certificate.
-- **Connector compatibility:** The custom Spark image intentionally retains the Kafka and S3 connector JARs that ship with the Bitnami `spark:3.5.1` base image. Those artifacts keep the Kafka Structured Streaming source and the `s3a://` filesystem driver in lockstep with the Bitnami distribution, which avoids the classpath conflicts that occur when mixing versions. Because MinIO implements the same API surface as S3, that connector stack is sufficient for both Amazon S3 and the bundled MinIO sandbox—no additional downloads are required to exercise the pipeline end-to-end.
-- **Operational check:** After launching the compose file, confirm that Spark is persisting data to MinIO by tailing the `spark_streaming` service logs (`docker compose logs -f spark_streaming`) and inspecting the `streaming-demo` bucket in the MinIO console. Successful micro-batches and new Parquet objects in the `names/` prefix demonstrate that the Kafka → Spark → MinIO leg is healthy.
-- **Troubleshooting:** If the MinIO console stays empty, gather the diagnostics listed in [`docs/minio_troubleshooting.md`](docs/minio_troubleshooting.md) so you can quickly isolate whether the container failed to start, the bucket provisioning helper exited early, or Spark cannot authenticate against the S3 endpoint.
-- **Going to AWS later:** If you want to point the pipeline at a real S3 bucket, replace the MinIO endpoint variables in `.env` (`S3_ENDPOINT`, `S3_BUCKET`, …) with your AWS settings—and populate the standard AWS environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, optional `AWS_SESSION_TOKEN`, and `AWS_REGION`). After updating the file restart the Spark services so they pick up the changes. The default `S3_ENDPOINT` now ships as `https://minio:9000` so Spark uses TLS by default; swap it for your provider's HTTPS URL when moving beyond the bundled MinIO sandbox.
+- **Credentials:** For development you can supply `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and (optionally) `AWS_SESSION_TOKEN` in `.env`. In production prefer IAM roles or another mechanism supported by the Default AWS Credentials Provider Chain so keys are rotated automatically.
+- **Endpoint flexibility:** The Spark job accepts an `S3_ENDPOINT` override. Leave it empty when targeting the regional AWS endpoints (for example `https://s3.eu-west-2.amazonaws.com`), or point it at an alternative endpoint if you use VPC endpoints or an on-prem S3-compatible gateway.
+- **Health check:** After starting the stack, confirm that JSON objects are appearing in your bucket under the configured prefix. `docker compose logs -f spark_streaming` shows each micro-batch completing and writing to S3.
 
 
 **c. Setting Up the Project:**
@@ -43,7 +32,7 @@ Out of the box the stack now ships with a local [MinIO](https://min.io/) contain
 - **Clone the Repository:** First, you'll need to clone the project from its GitHub repository using the following command:
 
 ```
-git clone https://github.com/<your-username>/spark-kafka-minio-airflow-etl.git
+git clone https://github.com/<your-username>/spark-kafka-airflow-etl.git
 ```
 
 Navigate to the project directory:
@@ -66,10 +55,9 @@ Running the stack in detached mode (`-d`) lets Docker start every container in t
 > 🆕 **Automatic end-to-end pipeline** — once the containers are healthy the following pieces cooperate without manual intervention:
 > * `airflow_init` seeds the metadata DB and admin user, then the scheduler/webserver start normally.
 > * `name_stream_dag` is scheduled every five minutes and runs the API → Kafka producer for two minutes per cycle.
-> * `spark_streaming` (a long-running service) submits `spark_processing.py` to the Spark master so Kafka records are continuously written to MinIO as Parquet.
-> * `minio_setup` creates the `streaming-demo` bucket so Spark’s checkpoints and Parquet sinks succeed immediately. During bootstrap it copies [`certs/minio/client/public.crt`](certs/minio/client/public.crt) into the MinIO Client trust store, which means the helper configures its alias over HTTPS without disabling certificate validation.
+> * `spark_streaming` (a long-running service) submits `spark_processing.py` to the Spark master so Kafka records are continuously written to Amazon S3 as newline-delimited JSON objects.
 >
-> That means `docker compose up -d --build` is now enough to demonstrate “API → Kafka → Spark → MinIO” for your portfolio—no more manual `docker exec`, `curl`, or `spark-submit` steps.
+> That means `docker compose up -d --build` is now enough to demonstrate “API → Kafka → Spark → S3” for your portfolio—no manual `docker exec`, `curl`, or `spark-submit` steps.
 
 ### Custom Airflow image & Python dependencies
 
@@ -81,15 +69,9 @@ The Compose file builds a lightweight wrapper image defined in `Dockerfile.airfl
 
 If you add new Python dependencies, update `requirements.txt`, rebuild the image (`docker compose build airflow_webserver`), and redeploy. For more advanced scenarios you can supply a different constraints URL via the `AIRFLOW_CONSTRAINTS_URL` build argument to keep Airflow and your packages in sync.
 
-### Spark ↔ MinIO TLS defaults
+### Spark ↔ S3 defaults
 
-The Spark submitter container (`spark_streaming`) now trusts the MinIO endpoint out of the box:
-
-* [`certs/minio/server/public.crt`](certs/minio/server/public.crt) / [`certs/minio/server/private.key`](certs/minio/server/private.key) are mounted into MinIO at `/root/.minio/certs` so the service terminates HTTPS with a consistent certificate.
-* [`certs/minio/client`](certs/minio/client) is mounted read-only at `/opt/minio/certs` inside every Spark container. The compose file injects `spark.driver.extraJavaOptions` and `spark.executor.extraJavaOptions` flags pointing at [`certs/minio/client/minio-truststore.jks`](certs/minio/client/minio-truststore.jks), so both the driver and executors trust the self-signed certificate.
-* `S3_ENDPOINT=https://minio:9000` is baked into the default `.env`. When you extend this project, keep the scheme/port pair aligned with the certificate you deploy (for example, regenerate the cert for a custom hostname and update the `.env` endpoint and certificate bundle together).
-
-If you regenerate the certificates, run `keytool -importcert` to update the truststore, replace the contents of [`certs/minio`](certs/minio), and restart the stack so every container picks up the new files. For quick one-off tests you can also supply `--cacert /opt/minio/certs/public.crt` to utilities like `curl` or `aws s3 ls` when running them from inside the Spark container.
+The Spark submitter container (`spark_streaming`) starts with the AWS connector JARs required for Structured Streaming and the `s3a://` filesystem. Supply an AWS region and bucket in `.env`, then either rely on the Default AWS Credentials Provider Chain or pass explicit credentials through environment variables. If you use interface endpoints or custom gateways, set `S3_ENDPOINT` accordingly so the job targets the correct hostname.
 
 After the containers have started, use the following quick checks to make sure everything is healthy before proceeding:
 
@@ -97,9 +79,9 @@ After the containers have started, use the following quick checks to make sure e
 2. Airflow Webserver (`http://localhost:8080`) – log in with the admin account you create in the next section to confirm the UI loads and the `name_stream_dag` DAG appears.
 3. Kafka UI (`http://localhost:8888`) – ensure the cluster is reachable and that the `names_topic` topic exists once you create it.
 4. Spark Master UI (`http://localhost:8085`) – verify the master and both workers are listed as `ALIVE` before submitting streaming jobs.
-5. MinIO Console (`https://localhost:9001`) – log in with `minioadmin / minioadmin` and confirm the `streaming-demo` bucket exists. New Parquet files will appear here once Spark picks up the Kafka stream. If the browser warns about the issuer, import [`certs/minio/client/public.crt`](certs/minio/client/public.crt) or continue past the warning while you are developing locally.
+5. Amazon S3 – check your bucket (for example with `aws s3 ls s3://$S3_BUCKET/$S3_OUTPUT_PREFIX/`) and confirm newline-delimited JSON files are arriving as the Spark job processes Kafka records.
 
-> 📈 **Validating the full flow** – Trigger `name_stream_dag` in Airflow or wait for the scheduled run, then watch `spark_streaming` container logs (`docker compose logs -f spark_streaming`) and the MinIO console. You should see Structured Streaming batches completing and fresh Parquet files landing in the `names/` prefix without any manual `spark-submit` commands.
+> 📈 **Validating the full flow** – Trigger `name_stream_dag` in Airflow or wait for the scheduled run, then watch `spark_streaming` container logs (`docker compose logs -f spark_streaming`) and your Amazon S3 bucket. You should see Structured Streaming batches completing and fresh JSON files landing in the `names/` prefix without any manual `spark-submit` commands.
 
 ### Guided end-to-end verification
 
@@ -108,11 +90,10 @@ If you would rather click through the interfaces instead of tailing logs, follow
 1. **Airflow** – Open `http://localhost:8080`, log in, and toggle the **`name_stream_dag`** switch to "On". Either trigger a manual run or wait for the next five-minute schedule; the DAG runs the producer for two minutes per execution.
 2. **Kafka UI** – Head to `http://localhost:8888`, choose the Kafka cluster, and inspect the **`names_topic`** topic. You should see the message rate steadily increase while the DAG run is active.
 3. **Spark UI** – Visit the Spark master at `http://localhost:8085` and open the **`spark_streaming`** application link. Under the Structured Streaming tab you can confirm that new micro-batches are processed and checkpoints are advancing.
-4. **MinIO console** – Finally, browse to `https://localhost:9001`, sign in with `minioadmin / minioadmin`, and open the **`streaming-demo`** bucket. Fresh Parquet files appear in the `names/` prefix as Spark persists the processed records.
-  - Optional: Download [`certs/minio/client/public.crt`](certs/minio/client/public.crt) and add it to your OS/browser trust store to avoid warning banners while testing the HTTPS endpoints. You can also validate the container-to-container chain with `docker compose exec spark_streaming openssl s_client -connect minio:9000 -CAfile /opt/minio/certs/public.crt -brief`.
+4. **Amazon S3** – Inspect your bucket using the AWS CLI, Console, or SDK of choice. New newline-delimited JSON files should appear under the configured prefix as the Spark streaming job processes Kafka records.
 
 
-Completing the four steps above proves the full path "API → Kafka → Spark → MinIO" is functioning without digging into container logs.
+Completing the four steps above proves the full path "API → Kafka → Spark → S3" is functioning without digging into container logs.
 
 
 > ℹ️ Both the `airflow_webserver` and `airflow_scheduler` services run with the same user ID/group ID mapping derived from the `AIRFLOW_UID`/`AIRFLOW_GID` values in `.env`. This prevents the scheduler from failing with permission errors when the mounted `dags/`, `logs/`, or `plugins/` directories are owned by `root`, and ensures that the Airflow components come up cleanly together. The only Airflow port published to the host is `8080`, and every other service in the stack binds to a distinct host port, so there are no container port conflicts when you run the full compose file.
@@ -144,7 +125,7 @@ Our project encompasses several services:
 - **Spark:**
 - **Master Node (`spark_master`):** The central control node for Apache Spark.
 - **Streaming submitter (`spark_streaming`):** A helper container that continuously submits the Structured Streaming job.
-- **Object storage (`minio` + `minio_setup`):** Local, S3-compatible bucket for checkpoints and Parquet outputs.
+  
 
 **3. Volumes**
 
@@ -171,8 +152,6 @@ Each service that exposes a user-facing port is mapped to a unique host port so 
 | Spark Master UI | 8085 | 8080 | Remapped to avoid clashing with Airflow. |
 | Spark Worker 1 UI | 8086 | 8081 | Worker 1 monitoring UI. |
 | Spark Worker 2 UI | 8087 | 8081 | Worker 2 monitoring UI. |
-| MinIO API | 9000 | 9000 | S3-compatible endpoint used by Spark (`https://localhost:9000`). |
-| MinIO Console | 9001 | 9001 | Web UI for inspecting buckets/objects (`https://localhost:9001`). |
 
 > ✅ **No host port conflicts** – every published port is distinct, so you can run the entire stack simultaneously without manual remapping. If you introduce new services, continue assigning unused host ports to maintain this guarantee.
 
@@ -267,10 +246,9 @@ The compose bundle handles dependency installation, Airflow database migrations,
 
 - **Airflow**: `airflow-init` runs database migrations and provisions the admin account defined in `.env`. The scheduler and webserver containers then start, unpause `name_stream_dag`, and trigger the producer every five minutes.
 - **Kafka**: the producer task calls `ensure_topic(...)`, so the `names_topic` topic is created on-demand—there is no need to pre-create it in the UI for local demos.
-- **Spark**: the `spark_streaming` service submits `spark_processing.py` to the Spark master as soon as Kafka and MinIO are healthy. Required connector JARs are baked into the custom image, so Structured Streaming can immediately sink Parquet data to MinIO.
-- **MinIO**: a helper container provisions the `streaming-demo` bucket before Spark starts writing checkpoints and output files.
+- **Spark**: the `spark_streaming` service submits `spark_processing.py` to the Spark master as soon as Kafka is healthy. Required connector JARs are baked into the custom image, so Structured Streaming can immediately sink newline-delimited JSON data to Amazon S3.
 
-Once all services report healthy, the system continuously demonstrates the end-to-end path (Random User API → Kafka → Spark → MinIO) without extra intervention.
+Once all services report healthy, the system continuously demonstrates the end-to-end path (Random User API → Kafka → Spark → S3) without extra intervention.
 
 ### 3. Optional manual commands (for debugging or learning)
 
@@ -302,7 +280,7 @@ Once all services report healthy, the system continuously demonstrates the end-t
 
 - Watch the Kafka topic in the UI (`http://localhost:8888`) while the DAG run is active.
 - Follow Structured Streaming progress in the Spark master UI (`http://localhost:8085`).
-- Browse to the MinIO console (`https://localhost:9001`) and confirm fresh Parquet files appear under the `names/` prefix.
+- Inspect the Amazon S3 bucket configured in `.env` and confirm newline-delimited JSON files appear under the `names/` prefix.
 
 ## C**hallenges and Troubleshooting**
 

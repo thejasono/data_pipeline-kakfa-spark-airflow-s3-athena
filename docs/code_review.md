@@ -1,7 +1,7 @@
 # Code Review Summary
 
 ## Spark Structured Streaming (`spark/app/spark_processing.py`)
-- ✅ Session bootstrap cleanly separates credential handling and now supports injecting a custom endpoint, which makes the job portable between MinIO and AWS S3. 【F:spark/app/spark_processing.py†L1-L109】
+- ✅ Session bootstrap cleanly separates credential handling and supports injecting a custom endpoint, keeping the job flexible across AWS S3 deployments. 【F:spark/app/spark_processing.py†L1-L209】
 - ⚠️ The job calls `awaitTermination()` and only stops the Spark session in a `finally` block. This means the container will run indefinitely unless the streaming query terminates (for example because the process receives SIGTERM). That is fine when you supervise it with Docker Compose/Kubernetes, but keep it in mind if you ever run this module directly because the `spark.stop()` call is effectively unreachable during normal operation. 【F:spark/app/spark_processing.py†L86-L106】
 - ⚠️ Static AWS keys are still supported, but when you deploy on AWS consider switching to IAM roles (IRSA on EKS, instance profiles on EMR/EC2). To do that, omit `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` so the code falls back to the default provider chain and can pick up temporary credentials automatically. 【F:spark/app/spark_processing.py†L28-L65】
 
@@ -17,4 +17,4 @@
 ## Suggested follow-ups
 1. Add automated tests for the Spark transformer to guard the JSON schema and hashed ZIP implementation. A tiny local DataFrame with one or two records would suffice.
 2. Consider exposing `STREAMING_DURATION`/`PAUSE_INTERVAL` via Airflow variables so you can tweak the cadence without rebuilding the image.
-3. Document how to rotate the MinIO certificate bundle if you replace the default TLS assets.
+3. Document how to audit IAM permissions when rotating AWS credentials.

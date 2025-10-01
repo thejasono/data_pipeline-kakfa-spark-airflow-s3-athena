@@ -1,8 +1,9 @@
 import logging
 import os
-from typing import Optional
+from typing import Optional, Tuple
+from urllib.parse import urlparse
 
-from pyspark.sql import SparkSession
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
 
@@ -46,11 +47,43 @@ def _configure_s3_credentials(builder: SparkSession.Builder,
     )
 
 
+def _normalize_s3_endpoint(raw: Optional[str]) -> Tuple[str, Optional[bool]]:
+    """Split an S3 endpoint into host[:port] and SSL preference."""
+    if raw is None:
+        raise ValueError("S3 endpoint is required when normalization is requested")
+
+    value = raw.strip()
+    if not value:
+        raise ValueError("S3 endpoint cannot be empty or whitespace")
+
+    if "://" not in value:
+        if any(ch in value for ch in "/?#"):
+            raise ValueError("S3 endpoint without scheme must not contain paths or queries")
+        return value, None
+
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError(f"Unsupported S3 endpoint scheme: {parsed.scheme}")
+    if not parsed.hostname:
+        raise ValueError("S3 endpoint must include a hostname")
+    if parsed.path not in {"", None}:
+        raise ValueError("S3 endpoint must not include a path component")
+    if parsed.params or parsed.query or parsed.fragment:
+        raise ValueError("S3 endpoint must not include params, query or fragment")
+
+    host = parsed.netloc
+    ssl_enabled = parsed.scheme == "https"
+    return host, ssl_enabled
+
+
 def initialize_spark_session(app_name: str,
                              *,
                              region: str,
                              access_key: Optional[str] = None,
-                             secret_key: Optional[str] = None) -> SparkSession:
+                             secret_key: Optional[str] = None,
+                             endpoint: Optional[str] = None,
+                             path_style: Optional[bool] = None,
+                             ssl_enabled: Optional[bool] = None) -> SparkSession:
     """Create a SparkSession with optional static AWS credentials."""
     builder = SparkSession.builder.appName(app_name)
 
@@ -63,6 +96,23 @@ def initialize_spark_session(app_name: str,
         )
 
     builder = builder.config("spark.hadoop.fs.s3a.region", region)
+
+    if endpoint:
+        builder = builder.config("spark.hadoop.fs.s3a.endpoint", endpoint)
+
+        if path_style is None:
+            path_style = "amazonaws.com" not in endpoint.lower()
+
+        builder = builder.config(
+            "spark.hadoop.fs.s3a.path.style.access",
+            str(path_style).lower(),
+        )
+
+        if ssl_enabled is not None:
+            builder = builder.config(
+                "spark.hadoop.fs.s3a.connection.ssl.enabled",
+                "true" if ssl_enabled else "false",
+            )
 
     try:
         spark = builder.getOrCreate()
@@ -140,6 +190,7 @@ def main():
     s3_region = os.environ.get("S3_REGION", "eu-west-2")
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     s3_access_key = os.environ.get("S3_ACCESS_KEY")
     s3_secret_key = os.environ.get("S3_SECRET_KEY")
 
@@ -157,11 +208,27 @@ def main():
         )
         spark.sparkContext.setLogLevel("ERROR")
 =======
+=======
+    endpoint_host = None
+    ssl_enabled = None
+    endpoint_raw = os.environ.get("S3_ENDPOINT")
+    if endpoint_raw:
+        endpoint_host, ssl_enabled = _normalize_s3_endpoint(endpoint_raw)
+
+    path_style_env = os.environ.get("S3_PATH_STYLE_ACCESS")
+    path_style = None
+    if path_style_env is not None:
+        path_style = path_style_env.lower() in {"1", "true", "yes", "on"}
+
+>>>>>>> babdeef3bf8d9b22eab712dd836e70e3849baba7
     spark = initialize_spark_session(
         app_name,
         region=s3_region,
         access_key=os.environ.get("S3_ACCESS_KEY"),
         secret_key=os.environ.get("S3_SECRET_KEY"),
+        endpoint=endpoint_host,
+        path_style=path_style,
+        ssl_enabled=ssl_enabled,
     )
 
 >>>>>>> be39093010cab56556dd2a7c1a38b99326f90871

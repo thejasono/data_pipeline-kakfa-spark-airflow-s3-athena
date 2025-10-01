@@ -15,7 +15,8 @@ logger = logging.getLogger("spark_structured_streaming")
 
 def initialize_spark_session_with_keys(app_name: str,
                                        access_key: str,
-                                       secret_key: str) -> SparkSession:
+                                       secret_key: str,
+                                       region: str) -> SparkSession:  # pass region in
     try:
         spark = (
             SparkSession.builder
@@ -24,6 +25,8 @@ def initialize_spark_session_with_keys(app_name: str,
                     "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
             .config("spark.hadoop.fs.s3a.access.key", access_key)
             .config("spark.hadoop.fs.s3a.secret.key", secret_key)
+            .config("spark.hadoop.fs.s3a.region", region)      # ensure region
+            .config("spark.hadoop.fs.s3a.path.style.access", "false")  # optional safety
             .getOrCreate()
         )
         spark.sparkContext.setLogLevel("ERROR")
@@ -33,7 +36,7 @@ def initialize_spark_session_with_keys(app_name: str,
         raise
 
 
-def get_streaming_dataframe(spark: SparkSession, brokers: str, topic: str) -> SparkSession:
+def get_streaming_dataframe(spark: SparkSession, brokers: str, topic: str) -> DataFrame:
     """Define a Kafka streaming DataFrame (unbounded table)."""
     # Prefer fail-fast: let caller handle exceptions.
     return (
@@ -97,24 +100,24 @@ def main():
     path = f"s3a://{bucket}/{output_prefix}"
     checkpoint_location = f"s3a://{bucket}/{checkpoint_prefix}"
 
-    s3_region = os.environ.get("S3_REGION", "us-east-1")
+    s3_region = os.environ.get("S3_REGION", "eu-west-2")
 
     s3_access_key = os.environ.get("S3_ACCESS_KEY")
     s3_secret_key = os.environ.get("S3_SECRET_KEY")
 
     if s3_access_key and s3_secret_key:
-        spark = initialize_spark_session_with_keys(app_name, s3_access_key, s3_secret_key)
+        spark = initialize_spark_session_with_keys(app_name, s3_access_key, s3_secret_key, s3_region)
     else:
         spark = (
             SparkSession.builder
             .appName(app_name)
             .config("spark.hadoop.fs.s3a.aws.credentials.provider",
                     "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
-            .config("spark.hadoop.fs.s3a.region", s3_region)  # optional
+            .config("spark.hadoop.fs.s3a.region", s3_region)
+            .config("spark.hadoop.fs.s3a.path.style.access", "false")  # optional
             .getOrCreate()
         )
         spark.sparkContext.setLogLevel("ERROR")
-
     try:
         df = get_streaming_dataframe(spark, brokers, topic)
         transformed_df = transform_streaming_data(df)

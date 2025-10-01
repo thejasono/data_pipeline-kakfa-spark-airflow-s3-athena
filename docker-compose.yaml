@@ -9,7 +9,6 @@ networks:
 volumes:
   spark_data:
   kafka_data: {}      # used by kafka:/var/lib/kafka/data
-  minio_data:
 
 x-airflow-image: &airflow-image custom-airflow:2.9.3-python3.11
 x-airflow-build: &airflow-build
@@ -297,7 +296,6 @@ services:
     volumes:
       - ./:/home
       - spark_data:/opt/bitnami/spark/data
-      - ./certs/minio/client:/opt/minio/certs:ro
     networks:
       - default
       - kafka_network
@@ -319,8 +317,6 @@ services:
     ports:
       - "8086:8081"     # Worker-1 UI
     networks: [default, kafka_network]
-    volumes:
-      - ./certs/minio/client:/opt/minio/certs:ro
 
   spark_worker_2:
     image: *spark-image
@@ -334,8 +330,6 @@ services:
     ports:
       - "8087:8081"     # Worker-2 UI
     networks: [default, kafka_network]
-    volumes:
-      - ./certs/minio/client:/opt/minio/certs:ro
 
   # ==========================================================================
   #  SPARK STREAMING JOB (runs spark_processing.py automatically)

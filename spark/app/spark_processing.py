@@ -149,11 +149,11 @@ def transform_streaming_data(df):
 
 
 def initiate_streaming_to_bucket(df, path: str, checkpoint_location: str):
-    """Start Parquet streaming sink with checkpointing and block."""
-    logger.info("Starting streaming sink (Parquet)...")
+    """Start JSON streaming sink with checkpointing and block."""
+    logger.info("Starting streaming sink (JSON)...")
     query = (
         df.writeStream
-          .format("parquet")
+          .format("json")
           .outputMode("append")
           .option("path", path)
           .option("checkpointLocation", checkpoint_location)
@@ -163,7 +163,7 @@ def initiate_streaming_to_bucket(df, path: str, checkpoint_location: str):
 
 
 def main():
-    """End-to-end: Spark init → Kafka read → JSON parse → Parquet sink (AWS S3)."""
+    """End-to-end: Spark init → Kafka read → JSON parse → JSON sink (AWS S3)."""
     app_name = "spark_streaming"
 
     brokers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:19092")

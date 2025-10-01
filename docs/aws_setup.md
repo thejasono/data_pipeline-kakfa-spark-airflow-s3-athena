@@ -1,6 +1,6 @@
 # AWS S3 Configuration Guide
 
-Follow these steps to point the demo stack at an AWS S3 bucket instead of the bundled MinIO sandbox.
+Follow these steps to configure the demo stack so it writes streaming output to your AWS S3 bucket.
 
 ## 1. Prepare AWS resources
 1. **Create or pick an S3 bucket**. Note the bucket name and region (for example `us-east-1`).
@@ -34,7 +34,7 @@ AWS_SESSION_TOKEN=<aws_session_token>
 S3_PATH_STYLE_ACCESS=false
 ```
 
-If you deploy with IAM roles and temporary credentials, leave the access key entries blank so that `spark_processing.py` falls back to the default provider chain. The Spark helper recognises the conventional AWS variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`) and uses them automatically when present. 【F:spark/app/spark_processing.py†L20-L112】
+If you deploy with IAM roles and temporary credentials, leave the access key entries blank so that `spark_processing.py` falls back to the default provider chain. The Spark helper recognises the conventional AWS variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`) and uses them automatically when present. 【F:spark/app/spark_processing.py†L68-L112】
 
 ## 3. Restart the stack
 Rebuild and restart the containers so the new environment variables are available:
@@ -44,9 +44,9 @@ docker compose down
 docker compose up -d --build spark_streaming
 ```
 
-The `spark_streaming` service will automatically pick up the new settings the next time it submits the job. 【F:docker-compose.yaml†L343-L370】【F:spark/app/spark_processing.py†L86-L109】
+The `spark_streaming` service will automatically pick up the new settings the next time it submits the job. 【F:docker-compose.yaml†L337-L360】【F:spark/app/spark_processing.py†L165-L214】
 
 ## 4. Verify the pipeline
 1. Use the Spark UI (`http://localhost:8085`) to confirm the Structured Streaming query is running.
-2. Inspect your S3 bucket for newly created Parquet files under the configured prefix.
+2. Inspect your S3 bucket for newly created newline-delimited JSON files under the configured prefix.
 3. Check the container logs if no data arrives. Common causes include missing IAM permissions or a typo in the bucket name.

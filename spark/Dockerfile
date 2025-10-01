@@ -13,7 +13,7 @@ USER 1001
 # Keep connector artifacts aligned with the Spark distribution that Bitnami ships
 # (Spark 3.5.1 built against Scala 2.12 and Kafka 3.5.x). Mixing major versions
 # causes class-loading errors at runtime, which previously stopped the streaming
-# job before it could write to MinIO.
+# job before it could write to S3.
 ARG KAFKA_CLIENT_VERSION=3.5.1
 ARG SPARK_KAFKA_VERSION=3.5.1
 ARG SCALA_BINARY_VERSION=2.12

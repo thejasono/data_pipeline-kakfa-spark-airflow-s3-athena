@@ -346,10 +346,12 @@ services:
       kafka:
         condition: service_started
     environment:
-      - S3_BUCKET=namegeneratorbucket
-      - S3_OUTPUT_PREFIX=names
-      - S3_CHECKPOINT_PREFIX=checkpoints/names
-      - S3_REGION=eu-west-2
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_OUTPUT_PREFIX=${S3_OUTPUT_PREFIX:-names}
+      - S3_CHECKPOINT_PREFIX=${S3_CHECKPOINT_PREFIX:-checkpoints/names}
+      - S3_REGION=${S3_REGION:-eu-west-2}
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - S3_PATH_STYLE_ACCESS=${S3_PATH_STYLE_ACCESS:-}
       - KAFKA_BOOTSTRAP_SERVERS=kafka:19092
       - KAFKA_TOPIC=names_topic
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}

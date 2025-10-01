@@ -14,23 +14,6 @@ logging.basicConfig(
 logger = logging.getLogger("spark_structured_streaming")
 
 
-<<<<<<< HEAD
-def initialize_spark_session_with_keys(app_name: str,
-                                       access_key: str,
-                                       secret_key: str,
-                                       region: str) -> SparkSession:  # pass region in
-    try:
-        spark = (
-            SparkSession.builder
-            .appName(app_name)
-            .config("spark.hadoop.fs.s3a.aws.credentials.provider",
-                    "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
-            .config("spark.hadoop.fs.s3a.access.key", access_key)
-            .config("spark.hadoop.fs.s3a.secret.key", secret_key)
-            .config("spark.hadoop.fs.s3a.region", region)      # ensure region
-            .config("spark.hadoop.fs.s3a.path.style.access", "false")  # optional safety
-            .getOrCreate()
-=======
 def _configure_s3_credentials(builder: SparkSession.Builder,
                               access_key: str,
                               secret_key: str) -> SparkSession.Builder:
@@ -40,7 +23,6 @@ def _configure_s3_credentials(builder: SparkSession.Builder,
         .config(
             "spark.hadoop.fs.s3a.aws.credentials.provider",
             "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
->>>>>>> be39093010cab56556dd2a7c1a38b99326f90871
         )
         .config("spark.hadoop.fs.s3a.access.key", access_key)
         .config("spark.hadoop.fs.s3a.secret.key", secret_key)
@@ -103,16 +85,17 @@ def initialize_spark_session(app_name: str,
         if path_style is None:
             path_style = "amazonaws.com" not in endpoint.lower()
 
+    if path_style is not None:
         builder = builder.config(
             "spark.hadoop.fs.s3a.path.style.access",
-            str(path_style).lower(),
+            str(bool(path_style)).lower(),
         )
 
-        if ssl_enabled is not None:
-            builder = builder.config(
-                "spark.hadoop.fs.s3a.connection.ssl.enabled",
-                "true" if ssl_enabled else "false",
-            )
+    if ssl_enabled is not None:
+        builder = builder.config(
+            "spark.hadoop.fs.s3a.connection.ssl.enabled",
+            "true" if ssl_enabled else "false",
+        )
 
     try:
         spark = builder.getOrCreate()
@@ -189,38 +172,17 @@ def main():
 
     s3_region = os.environ.get("S3_REGION", "eu-west-2")
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    s3_access_key = os.environ.get("S3_ACCESS_KEY")
-    s3_secret_key = os.environ.get("S3_SECRET_KEY")
-
-    if s3_access_key and s3_secret_key:
-        spark = initialize_spark_session_with_keys(app_name, s3_access_key, s3_secret_key, s3_region)
-    else:
-        spark = (
-            SparkSession.builder
-            .appName(app_name)
-            .config("spark.hadoop.fs.s3a.aws.credentials.provider",
-                    "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
-            .config("spark.hadoop.fs.s3a.region", s3_region)
-            .config("spark.hadoop.fs.s3a.path.style.access", "false")  # optional
-            .getOrCreate()
-        )
-        spark.sparkContext.setLogLevel("ERROR")
-=======
-=======
     endpoint_host = None
-    ssl_enabled = None
+    ssl_pref = None
     endpoint_raw = os.environ.get("S3_ENDPOINT")
     if endpoint_raw:
-        endpoint_host, ssl_enabled = _normalize_s3_endpoint(endpoint_raw)
+        endpoint_host, ssl_pref = _normalize_s3_endpoint(endpoint_raw)
 
     path_style_env = os.environ.get("S3_PATH_STYLE_ACCESS")
     path_style = None
     if path_style_env is not None:
         path_style = path_style_env.lower() in {"1", "true", "yes", "on"}
 
->>>>>>> babdeef3bf8d9b22eab712dd836e70e3849baba7
     spark = initialize_spark_session(
         app_name,
         region=s3_region,
@@ -228,10 +190,9 @@ def main():
         secret_key=os.environ.get("S3_SECRET_KEY"),
         endpoint=endpoint_host,
         path_style=path_style,
-        ssl_enabled=ssl_enabled,
+        ssl_enabled=ssl_pref,
     )
 
->>>>>>> be39093010cab56556dd2a7c1a38b99326f90871
     try:
         df = get_streaming_dataframe(spark, brokers, topic)
         transformed_df = transform_streaming_data(df)

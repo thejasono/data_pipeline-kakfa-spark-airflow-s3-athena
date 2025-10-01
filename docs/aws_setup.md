@@ -1,0 +1,44 @@
+# AWS S3 Configuration Guide
+
+Follow these steps to point the demo stack at an AWS S3 bucket instead of the bundled MinIO sandbox.
+
+## 1. Prepare AWS resources
+1. **Create or pick an S3 bucket**. Note the bucket name and region (for example `us-east-1`).
+2. **Provision credentials**:
+   - *Recommended*: attach an IAM role to the compute environment that runs Docker (EC2 instance profile, ECS task role, or EKS IRSA). The Spark job will then rely on the Default AWS Credentials Provider Chain.
+   - *Alternative*: create an IAM user with programmatic access and grant it permission to write to the bucket (for example the `AmazonS3FullAccess` policy while testing).
+
+## 2. Update the `.env` file
+Edit the root `.env` file so the Spark container receives the correct values:
+
+```dotenv
+S3_BUCKET=<your-bucket-name>
+S3_REGION=<bucket-region>
+S3_ENDPOINT=https://s3.<bucket-region>.amazonaws.com
+S3_OUTPUT_PREFIX=names        # or any folder/prefix you prefer
+S3_CHECKPOINT_PREFIX=checkpoints/names
+
+# Only required when you use long-lived IAM access keys.
+S3_ACCESS_KEY=<aws_access_key_id>
+S3_SECRET_KEY=<aws_secret_access_key>
+
+# Leave this unset (or set it to "false") when targeting AWS so Spark uses virtual-host style URLs.
+S3_PATH_STYLE_ACCESS=false
+```
+
+If you deploy with IAM roles and temporary credentials, delete the `S3_ACCESS_KEY`/`S3_SECRET_KEY` entries so that `spark_processing.py` falls back to the default provider chain. 【F:spark/app/spark_processing.py†L31-L65】
+
+## 3. Restart the stack
+Rebuild and restart the containers so the new environment variables are available:
+
+```bash
+docker compose down
+docker compose up -d --build spark_streaming
+```
+
+The `spark_streaming` service will automatically pick up the new settings the next time it submits the job. 【F:docker-compose.yaml†L343-L370】【F:spark/app/spark_processing.py†L86-L109】
+
+## 4. Verify the pipeline
+1. Use the Spark UI (`http://localhost:8085`) to confirm the Structured Streaming query is running.
+2. Inspect your S3 bucket for newly created Parquet files under the configured prefix.
+3. Check the container logs if no data arrives. Common causes include missing IAM permissions or a typo in the bucket name.

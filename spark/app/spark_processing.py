@@ -85,16 +85,17 @@ def initialize_spark_session(app_name: str,
         if path_style is None:
             path_style = "amazonaws.com" not in endpoint.lower()
 
+    if path_style is not None:
         builder = builder.config(
             "spark.hadoop.fs.s3a.path.style.access",
-            str(path_style).lower(),
+            str(bool(path_style)).lower(),
         )
 
-        if ssl_enabled is not None:
-            builder = builder.config(
-                "spark.hadoop.fs.s3a.connection.ssl.enabled",
-                "true" if ssl_enabled else "false",
-            )
+    if ssl_enabled is not None:
+        builder = builder.config(
+            "spark.hadoop.fs.s3a.connection.ssl.enabled",
+            "true" if ssl_enabled else "false",
+        )
 
     try:
         spark = builder.getOrCreate()

@@ -37,6 +37,7 @@ Out of the box the stack now ships with a local [MinIO](https://min.io/) contain
 - **Troubleshooting:** If the MinIO console stays empty, gather the diagnostics listed in [`docs/minio_troubleshooting.md`](docs/minio_troubleshooting.md) so you can quickly isolate whether the container failed to start, the bucket provisioning helper exited early, or Spark cannot authenticate against the S3 endpoint.
 - **Going to AWS later:** If you want to point the pipeline at a real S3 bucket, replace the MinIO endpoint variables in `.env` (`S3_ENDPOINT`, `S3_BUCKET`, …) with your AWS settings—and populate the standard AWS environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, optional `AWS_SESSION_TOKEN`, and `AWS_REGION`). After updating the file restart the Spark services so they pick up the changes. The default `S3_ENDPOINT` now ships as `https://minio:9000` so Spark uses TLS by default; swap it for your provider's HTTPS URL when moving beyond the bundled MinIO sandbox.
 
+
 **c. Setting Up the Project:**
 
 - **Clone the Repository:** First, you'll need to clone the project from its GitHub repository using the following command:

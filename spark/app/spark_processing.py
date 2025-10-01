@@ -184,6 +184,7 @@ def main():
     secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
     session_token = os.environ.get("AWS_SESSION_TOKEN")
 
+
     endpoint_host = None
     ssl_pref = None
     endpoint_raw = os.environ.get("S3_ENDPOINT")

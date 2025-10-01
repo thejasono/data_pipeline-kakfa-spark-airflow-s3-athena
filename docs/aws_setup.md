@@ -24,6 +24,12 @@ AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
 # Optional when using temporary credentials.
 AWS_SESSION_TOKEN=<aws_session_token>
 
+# Alternatively, set the standard AWS variables:
+AWS_ACCESS_KEY_ID=<aws_access_key_id>
+AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
+# Optional when using temporary credentials.
+AWS_SESSION_TOKEN=<aws_session_token>
+
 # Leave this unset (or set it to "false") when targeting AWS so Spark uses virtual-host style URLs.
 S3_PATH_STYLE_ACCESS=false
 ```

@@ -19,8 +19,10 @@ S3_OUTPUT_PREFIX=names        # or any folder/prefix you prefer
 S3_CHECKPOINT_PREFIX=checkpoints/names
 
 # Only required when you use long-lived IAM access keys.
-S3_ACCESS_KEY=<aws_access_key_id>
-S3_SECRET_KEY=<aws_secret_access_key>
+AWS_ACCESS_KEY_ID=<aws_access_key_id>
+AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
+# Optional when using temporary credentials.
+AWS_SESSION_TOKEN=<aws_session_token>
 
 # Alternatively, set the standard AWS variables:
 AWS_ACCESS_KEY_ID=<aws_access_key_id>
@@ -32,7 +34,7 @@ AWS_SESSION_TOKEN=<aws_session_token>
 S3_PATH_STYLE_ACCESS=false
 ```
 
-If you deploy with IAM roles and temporary credentials, delete the `S3_ACCESS_KEY`/`S3_SECRET_KEY` entries so that `spark_processing.py` falls back to the default provider chain. The Spark helper also recognises the conventional AWS variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`) and uses them automatically when present. 【F:spark/app/spark_processing.py†L20-L112】
+If you deploy with IAM roles and temporary credentials, leave the access key entries blank so that `spark_processing.py` falls back to the default provider chain. The Spark helper recognises the conventional AWS variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`) and uses them automatically when present. 【F:spark/app/spark_processing.py†L20-L112】
 
 ## 3. Restart the stack
 Rebuild and restart the containers so the new environment variables are available:

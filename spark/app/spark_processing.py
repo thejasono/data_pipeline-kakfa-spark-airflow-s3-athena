@@ -180,9 +180,10 @@ def main():
 
     s3_region = os.environ.get("S3_REGION") or os.environ.get("AWS_REGION") or "eu-west-2"
 
-    access_key = os.environ.get("S3_ACCESS_KEY") or os.environ.get("AWS_ACCESS_KEY_ID")
-    secret_key = os.environ.get("S3_SECRET_KEY") or os.environ.get("AWS_SECRET_ACCESS_KEY")
-    session_token = os.environ.get("S3_SESSION_TOKEN") or os.environ.get("AWS_SESSION_TOKEN")
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    session_token = os.environ.get("AWS_SESSION_TOKEN")
+
 
     endpoint_host = None
     ssl_pref = None

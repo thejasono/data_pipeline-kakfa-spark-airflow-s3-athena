@@ -16,17 +16,24 @@ logger = logging.getLogger("spark_structured_streaming")
 
 def _configure_s3_credentials(builder: SparkSession.Builder,
                               access_key: str,
-                              secret_key: str) -> SparkSession.Builder:
+                              secret_key: str,
+                              session_token: Optional[str] = None) -> SparkSession.Builder:
     """Apply static AWS credentials to a Spark builder."""
-    return (
+    provider = "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider"
+    if session_token:
+        provider = "org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider"
+
+    builder = (
         builder
-        .config(
-            "spark.hadoop.fs.s3a.aws.credentials.provider",
-            "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
-        )
+        .config("spark.hadoop.fs.s3a.aws.credentials.provider", provider)
         .config("spark.hadoop.fs.s3a.access.key", access_key)
         .config("spark.hadoop.fs.s3a.secret.key", secret_key)
     )
+
+    if session_token:
+        builder = builder.config("spark.hadoop.fs.s3a.session.token", session_token)
+
+    return builder
 
 
 def _normalize_s3_endpoint(raw: Optional[str]) -> Tuple[str, Optional[bool]]:
@@ -63,6 +70,7 @@ def initialize_spark_session(app_name: str,
                              region: str,
                              access_key: Optional[str] = None,
                              secret_key: Optional[str] = None,
+                             session_token: Optional[str] = None,
                              endpoint: Optional[str] = None,
                              path_style: Optional[bool] = None,
                              ssl_enabled: Optional[bool] = None) -> SparkSession:
@@ -70,7 +78,7 @@ def initialize_spark_session(app_name: str,
     builder = SparkSession.builder.appName(app_name)
 
     if access_key and secret_key:
-        builder = _configure_s3_credentials(builder, access_key, secret_key)
+        builder = _configure_s3_credentials(builder, access_key, secret_key, session_token)
     else:
         builder = builder.config(
             "spark.hadoop.fs.s3a.aws.credentials.provider",
@@ -170,7 +178,11 @@ def main():
     path = f"s3a://{bucket}/{output_prefix}"
     checkpoint_location = f"s3a://{bucket}/{checkpoint_prefix}"
 
-    s3_region = os.environ.get("S3_REGION", "eu-west-2")
+    s3_region = os.environ.get("S3_REGION") or os.environ.get("AWS_REGION") or "eu-west-2"
+
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    session_token = os.environ.get("AWS_SESSION_TOKEN")
 
     endpoint_host = None
     ssl_pref = None
@@ -186,8 +198,9 @@ def main():
     spark = initialize_spark_session(
         app_name,
         region=s3_region,
-        access_key=os.environ.get("S3_ACCESS_KEY"),
-        secret_key=os.environ.get("S3_SECRET_KEY"),
+        access_key=access_key,
+        secret_key=secret_key,
+        session_token=session_token,
         endpoint=endpoint_host,
         path_style=path_style,
         ssl_enabled=ssl_pref,

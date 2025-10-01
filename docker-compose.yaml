@@ -358,6 +358,10 @@ services:
       - S3_REGION=eu-west-2
       - KAFKA_BOOTSTRAP_SERVERS=kafka:19092
       - KAFKA_TOPIC=names_topic
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - AWS_REGION=${AWS_REGION}
       # Optional if you mount ~/.aws below:
       # - AWS_PROFILE=default
     command:

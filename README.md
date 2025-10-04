@@ -22,6 +22,11 @@ Docker will be our primary tool to orchestrate and run various services.
 **b. Object storage (AWS S3):**
 The pipeline writes JSON micro-batches directly to Amazon S3. Create a bucket in your preferred region and update the `.env` file with the bucket name, region, and (if necessary) temporary credentials. When the stack starts, the Spark streaming container uses those settings to persist data without any additional bootstrap services.
 
+Populate **both** environment files before you start the stack:
+
+- `.env` already ships with sane defaults for service configuration (Airflow, Kafka, Spark). Update the S3 bucket/region entries to match your environment.
+- `.env.aws` contains the AWS credentials that the Spark containers load via the Compose `env_file` directive. The repository includes placeholder values so `docker compose` can start, but you must overwrite them with working credentials (for example, paste the output from `aws configure export-credentials --format env`). The Windows helper script `run_spark.ps1` automates this by logging in with AWS SSO, generating a fresh `.env.aws`, and running Compose with those short-lived credentials.
+
 - **Credentials:** For development you can supply `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and (optionally) `AWS_SESSION_TOKEN` in `.env`. In production prefer IAM roles or another mechanism supported by the Default AWS Credentials Provider Chain so keys are rotated automatically.
 - **Endpoint flexibility:** The Spark job accepts an `S3_ENDPOINT` override. Leave it empty when targeting the regional AWS endpoints (for example `https://s3.eu-west-2.amazonaws.com`), or point it at an alternative endpoint if you use VPC endpoints or an on-prem S3-compatible gateway.
 - **Health check:** After starting the stack, confirm that JSON objects are appearing in your bucket under the configured prefix. `docker compose logs -f spark_streaming` shows each micro-batch completing and writing to S3.

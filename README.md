@@ -50,6 +50,8 @@ docker compose up -d --build
 
 Running the stack in detached mode (`-d`) lets Docker start every container in the background, and the `--build` flag ensures the images are rebuilt if you have changed any of the source files since your last run. The command orchestrates the start-up of all necessary services like Kafka, Spark, Airflow, etc., in Docker containers. If you only need to restart the stack without rebuilding the images, you can omit `--build` on subsequent runs.
 
+> 🗒️ **PostgreSQL client access** – the `airflow_db` service now mounts `postgres/conf/pg_hba.conf` so that other containers on the Docker network can authenticate with SCRAM-SHA-256. If you initialised the database with an older version of the configuration, remove the local `./airflow_pgdata` directory before running `docker compose up` so Postgres picks up the updated access rules.
+
 > 🔐 **One-time secret key setup** – update `AIRFLOW_SECRET_KEY` in `.env` with a long random value before starting the stack. Every Airflow container reads this value so served logs can be fetched without the 403/"secret_key" mismatch warning that appears when each component autogenerates its own key.
 
 > 🆕 **Automatic end-to-end pipeline** — once the containers are healthy the following pieces cooperate without manual intervention:

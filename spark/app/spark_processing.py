@@ -1,11 +1,14 @@
 import logging
 import os
+import time
 from typing import Optional, Tuple
 from urllib.parse import urlparse
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+
+from confluent_kafka.admin import AdminClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -128,6 +131,36 @@ def get_streaming_dataframe(spark: SparkSession, brokers: str, topic: str) -> Da
     )
 
 
+def ensure_kafka_topic_exists(brokers: str, topic: str, *, timeout: int = 60, poll_interval: float = 2.0) -> None:
+    """Poll the Kafka cluster until the topic is reported as available.
+
+    Structured Streaming fails with `UnknownTopicOrPartitionException` if we try to
+    subscribe to a topic that hasn't been created yet. This helper gives a clearer
+    error message and avoids repeatedly starting the streaming query before the
+    topic exists. The function raises a RuntimeError if the topic is still missing
+    after the timeout expires.
+    """
+
+    deadline = time.time() + timeout
+    admin = AdminClient({"bootstrap.servers": brokers})
+
+    while True:
+        metadata = admin.list_topics(timeout=min(5.0, max(0.1, deadline - time.time())))
+        topic_meta = metadata.topics.get(topic)
+
+        if topic_meta and topic_meta.error is None:
+            return
+
+        if time.time() >= deadline:
+            raise RuntimeError(
+                f"Kafka topic '{topic}' is not available on brokers '{brokers}'. "
+                "Ensure the topic exists before starting the Spark streaming job."
+            )
+
+        logger.info("Waiting for Kafka topic '%s' to become available...", topic)
+        time.sleep(poll_interval)
+
+
 def transform_streaming_data(df):
     """Cast Kafka value→STRING, parse JSON to typed columns."""
     schema = StructType([
@@ -208,6 +241,7 @@ def main():
     )
 
     try:
+        ensure_kafka_topic_exists(brokers, topic)
         df = get_streaming_dataframe(spark, brokers, topic)
         transformed_df = transform_streaming_data(df)
         initiate_streaming_to_bucket(transformed_df, path, checkpoint_location)

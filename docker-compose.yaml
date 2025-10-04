@@ -276,66 +276,75 @@ services:
   # ============================================================================
   #  APACHE SPARK MASTER (Standalone mode)
   # ============================================================================
+# ----------------------------------------------------------------------------
+# SPARK MASTER
+# ----------------------------------------------------------------------------
   spark-master:
     image: *spark-image
     build: *spark-build
-    # Build the custom Spark image once; other Spark services reuse this tag
-    # to avoid parallel build conflicts when running `docker compose up --build`.
     container_name: spark-master
+    env_file:
+      - .env.aws
     environment:
       - SPARK_MODE=master
-      - SPARK_MASTER_HOST=spark-master   # advertise stable DNS to workers
+      - SPARK_MASTER_HOST=spark-master
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
-      # Security (dev = off). In production, enable:
-      # - SPARK_RPC_AUTHENTICATION_ENABLED=yes
-      # - SPARK_RPC_ENCRYPTION_ENABLED=yes
-      # These flags control RPC auth/encryption regardless of worker count.
-      # UI is 8080 in-container; remapped below to avoid clashes.
-      # - SPARK_UI_PORT=8080
+      # Make S3A use env credentials (ACCESS_KEY/SECRET/SESSION_TOKEN)
+      - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
     ports:
-      - "8085:8080"                                  # Spark Master UI → http://localhost:8085
+      - "8085:8080"
     volumes:
       - ./:/home
       - spark_data:/opt/bitnami/spark/data
-    networks:
-      - default
-      - kafka_network
+    networks: [default, kafka_network]
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080 | grep -q 'Spark Master'"]
       interval: 10s
       timeout: 5s
       retries: 10
 
+# ----------------------------------------------------------------------------
+# SPARK WORKER 1
+# ----------------------------------------------------------------------------
   spark_worker_1:
     image: *spark-image
     depends_on: [spark-master]
+    env_file:
+      - .env.aws
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=4G
       - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
     ports:
-      - "8086:8081"     # Worker-1 UI
+      - "8086:8081"
     networks: [default, kafka_network]
 
+# ----------------------------------------------------------------------------
+# SPARK WORKER 2
+# ----------------------------------------------------------------------------
   spark_worker_2:
     image: *spark-image
     depends_on: [spark-master]
+    env_file:
+      - .env.aws
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=4G
       - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
     ports:
-      - "8087:8081"     # Worker-2 UI
+      - "8087:8081"
     networks: [default, kafka_network]
 
-  # ==========================================================================
-  #  SPARK STREAMING JOB (runs spark_processing.py automatically)
-  # ==========================================================================
+# ----------------------------------------------------------------------------
+# SPARK STREAMING JOB (driver runs here)
+# ----------------------------------------------------------------------------
   spark_streaming:
     image: *spark-image
     depends_on:
@@ -347,6 +356,8 @@ services:
         condition: service_started
       kafka:
         condition: service_started
+    env_file:
+      - .env.aws
     environment:
       - S3_BUCKET=${S3_BUCKET}
       - S3_OUTPUT_PREFIX=${S3_OUTPUT_PREFIX:-names}
@@ -356,12 +367,8 @@ services:
       - S3_PATH_STYLE_ACCESS=${S3_PATH_STYLE_ACCESS:-}
       - KAFKA_BOOTSTRAP_SERVERS=kafka:19092
       - KAFKA_TOPIC=names_topic
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
-      - AWS_REGION=${AWS_REGION}
-      # Optional if you mount ~/.aws below:
-      # - AWS_PROFILE=default
+      # Ensure S3A reads env credentials
+      - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
     command:
       - bash
       - -lc
@@ -372,9 +379,7 @@ services:
     volumes:
       - ./spark/app:/opt/spark/app
       - spark_data:/opt/bitnami/spark/data
-      # Mount local AWS credentials into container (if using profiles)
-      - ~/.aws:/root/.aws:ro
+      # If you rely on exported env creds, this mount is optional:
+      # - ~/.aws:/root/.aws:ro
     restart: unless-stopped
-    networks:
-      - default
-      - kafka_network
+    networks: [default, kafka_network]

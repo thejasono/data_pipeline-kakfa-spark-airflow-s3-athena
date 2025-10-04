@@ -36,6 +36,16 @@ S3_PATH_STYLE_ACCESS=false
 
 If you deploy with IAM roles and temporary credentials, leave the access key entries blank so that `spark_processing.py` falls back to the default provider chain. The Spark helper recognises the conventional AWS variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`) and uses them automatically when present. 【F:spark/app/spark_processing.py†L68-L112】
 
+### Using AWS IAM Identity Center (AWS SSO)
+
+When your organisation issues credentials through AWS IAM Identity Center, you do **not** copy the start URL or region into `.env`. Instead, configure the AWS CLI once on your workstation:
+
+1. Run `aws configure sso` and answer the prompts with your Identity Center start URL (for example `https://d-9c675e8e1c.awsapps.com/start/#`) and home region (for example `eu-west-2`).
+2. Execute `aws sso login --profile <profile-name>` whenever the cached credentials expire.
+3. Mount your local `~/.aws` directory and point the container at that profile by uncommenting `AWS_PROFILE` and the `~/.aws` volume in `docker-compose.yaml`. 【F:docker-compose.yaml†L350-L377】
+
+The Spark job will continue to rely on the Default AWS Credentials Provider Chain, so once the profile is logged in the container picks up the temporary credentials automatically—no additional environment variables are required. 【F:spark/app/spark_processing.py†L82-L102】【F:docker-compose.yaml†L350-L377】
+
 ## 3. Restart the stack
 Rebuild and restart the containers so the new environment variables are available:
 

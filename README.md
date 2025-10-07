@@ -20,16 +20,60 @@ Docker will be our primary tool to orchestrate and run various services.
 - **Verification:** Open a terminal or command prompt and execute `docker --version` to ensure a successful installation.
 
 **b. Object storage (AWS S3):**
-The pipeline writes JSON micro-batches directly to Amazon S3. Create a bucket in your preferred region and update the `.env` file with the bucket name, region, and (if necessary) temporary credentials. When the stack starts, the Spark streaming container uses those settings to persist data without any additional bootstrap services.
+The pipeline writes JSON micro-batches directly to Amazon S3. Create a bucket in your preferred region and update the environment files with the bucket name, region, and (if necessary) temporary credentials. When the stack starts, the Spark streaming container uses those settings to persist data without any additional bootstrap services.
 
 Populate **both** environment files before you start the stack:
 
 - `.env` already ships with sane defaults for service configuration (Airflow, Kafka, Spark). Update the S3 bucket/region entries to match your environment.
 - `.env.aws` contains the AWS credentials that the Spark containers load via the Compose `env_file` directive. The repository includes placeholder values so `docker compose` can start, but you must overwrite them with working credentials (for example, paste the output from `aws configure export-credentials --format env`). The Windows helper script `run_spark.ps1` automates this by logging in with AWS SSO, generating a fresh `.env.aws`, and running Compose with those short-lived credentials.
 
-- **Credentials:** For development you can supply `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and (optionally) `AWS_SESSION_TOKEN` in `.env`. In production prefer IAM roles or another mechanism supported by the Default AWS Credentials Provider Chain so keys are rotated automatically.
-- **Endpoint flexibility:** The Spark job accepts an `S3_ENDPOINT` override. Leave it empty when targeting the regional AWS endpoints (for example `https://s3.eu-west-2.amazonaws.com`), or point it at an alternative endpoint if you use VPC endpoints or an on-prem S3-compatible gateway.
-- **Health check:** After starting the stack, confirm that JSON objects are appearing in your bucket under the configured prefix. `docker compose logs -f spark_streaming` shows each micro-batch completing and writing to S3.
+#### Enabling Amazon S3 connectivity
+
+> 📝 **S3 setup checklist** – before you start Docker, work through the following quick list so the streaming job can talk to your bucket:
+>
+> 1. Create or identify an S3 bucket in your preferred AWS region.
+> 2. Update `.env` with your bucket name, output prefixes, and region (`S3_BUCKET`, `S3_OUTPUT_PREFIX`, `S3_CHECKPOINT_PREFIX`, `S3_REGION`).
+> 3. Decide how the containers should authenticate:
+>    - Paste long-lived access keys into `.env.aws` (or `.env`) as `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and, when required, `AWS_SESSION_TOKEN`/`AWS_REGION`; **or**
+>    - Leave those values blank and mount your host `~/.aws` directory with an active AWS CLI profile. Export `AWS_PROFILE` if you need a non-default profile inside the containers.
+> 4. Only set `S3_ENDPOINT` and `S3_PATH_STYLE_ACCESS` in `.env` when you target a private gateway or S3-compatible appliance that needs path-style URLs.
+> 5. Run `docker compose up -d --build spark_streaming` (or restart the full stack) after editing the environment files so the Spark container reloads its configuration.
+
+> 🔍 **Information to pull from AWS** – if you already know the bucket name, gather the remaining details below so you can finish configuring the project:
+>
+> - **Bucket region** – Spark needs the AWS region code (for example `us-east-1` or `eu-west-2`) that hosts the bucket. Populate `S3_REGION` in `.env` with that exact value.
+> - **Output/checkpoint prefixes** – Decide which folder-style prefixes the job should use when writing data (for example `names` for `s3://<bucket>/names/`). Update `S3_OUTPUT_PREFIX` and `S3_CHECKPOINT_PREFIX` so Structured Streaming keeps data and checkpoints separate.
+> - **IAM principal & permissions** – Identify the IAM user or role whose credentials you will supply. Ensure it can call `s3:PutObject`, `s3:ListBucket`, and `s3:GetBucketLocation` on the bucket/prefix.
+> - **Credentials or profile** – Either export access keys (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, optional `AWS_SESSION_TOKEN`) into `.env.aws`, or confirm you have an AWS CLI profile with valid SSO/session tokens that you can mount into the container.
+> - **Custom endpoint requirements (optional)** – Only if you use a private gateway or S3-compatible appliance, determine the endpoint hostname and whether it requires path-style URLs so you can set `S3_ENDPOINT` and `S3_PATH_STYLE_ACCESS`.
+
+> 🚨 **Everything configured but still failing?** Work through these common gotchas before opening a ticket:
+>
+> - **Wrong file loaded:** Confirm both `.env` and `.env.aws` sit in the project root when you run `docker compose`. The CLI only reads files that exist at startup.
+> - **Credentials expired:** If you rely on temporary STS or SSO tokens, regenerate them (`aws sso login` / `aws sts assume-role`) and rebuild the container so it picks up the refreshed values.
+> - **Region mismatch:** Make sure `S3_REGION` matches the bucket's actual region. A mismatch produces opaque `301 Moved Permanently` or signature errors in the Spark logs.
+> - **Endpoint reachability:** From the Docker host, run `curl https://s3.<region>.amazonaws.com --head` (or your custom endpoint) to ensure DNS/firewall rules allow outbound access.
+> - **IAM policy gaps:** Tail `docker compose logs -f spark_streaming` and look for `AccessDenied` or `SignatureDoesNotMatch`. Those errors usually mean the IAM principal is missing one of the required S3 permissions or the bucket policy blocks the caller.
+> - **Path-style requirement:** VPC endpoints that only support path-style URLs will fail unless `S3_PATH_STYLE_ACCESS=true`. Set it and restart the service if you see `PermanentRedirect` errors.
+
+1. **Confirm AWS-side access.** Double-check that the IAM user or role you plan to use can call `s3:PutObject`, `s3:ListBucket`, and `s3:GetBucketLocation` on the target bucket/prefix. Verifying the bucket name and region now prevents confusing Spark errors later.
+2. **Surface credentials to the containers.** Choose one of the following approaches so Spark can read credentials from the default provider chain:
+   - **Environment variables:** Add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and (if required) `AWS_SESSION_TOKEN` to `.env` or `.env.aws`. These keys are injected directly into the `spark_streaming` service via Compose.
+   - **IAM Identity Center/SSO or roles:** Leave the credential entries blank, uncomment the `~/.aws` bind mount in `docker-compose.yaml`, and (optionally) export `AWS_PROFILE` so the container uses your cached CLI login.
+3. **Set bucket and endpoint configuration.** Adjust `S3_BUCKET`, `S3_REGION`, and `S3_OUTPUT_PREFIX` in `.env`. Only populate `S3_ENDPOINT` and `S3_PATH_STYLE_ACCESS` when you target a private gateway or an S3-compatible appliance that requires path-style URLs.
+4. **Restart the streaming service to pick up changes.** Rebuild just the Spark streaming container after updating credentials or environment variables:
+
+   ```bash
+   docker compose up -d --build spark_streaming
+   ```
+
+5. **Post-change verification.** Before and after the restart, run a quick network sanity check (for example, `curl https://s3.<region>.amazonaws.com --head`) to ensure the Docker host can reach the endpoint. Once the stack is running, tail the streaming logs and watch your bucket for new JSON objects under the configured prefix:
+
+   ```bash
+   docker compose logs -f spark_streaming
+   ```
+
+   If your VPC endpoint only supports path-style access, remember to set `S3_PATH_STYLE_ACCESS=true` so Spark forms the correct URLs.
 
 
 **c. Setting Up the Project:**

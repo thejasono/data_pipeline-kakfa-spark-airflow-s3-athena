@@ -31,26 +31,14 @@ sso_registration_scopes = sso:account:access
 > **Tip:** You can generate this structure with `aws configure sso` to avoid editing the file manually.
 
 ## 3. Log in with SSO
-Use the AWS CLI to establish a session for the configured profile **before** running
-any tooling (such as `docker compose`) that depends on AWS access:
+=======
+Use the AWS CLI to establish a session for the configured profile:
 
 ```powershell
 aws sso login --profile AdministratorAccess-251986419027
 ```
 
-This command opens a browser window where you sign in to your Identity Center. After approval, the CLI caches temporary credentials locally. The cache is then reused by subsequent CLI calls from the same machine.
-
-If you want a single command that both refreshes the SSO session and starts your local
-stack, you can chain the commands:
-
-```powershell
-aws sso login --profile AdministratorAccess-251986419027 `
-  ; docker compose up -d --build
-```
-
-The `aws sso login` command completes quickly when the cached session is still valid.
-If the session has expired, it will prompt for re-authentication before continuing to
-`docker compose`.
+This command opens a browser window where you sign in to your Identity Center. After approval, the CLI caches temporary credentials locally.
 
 ## 4. Use the profile without environment variables
 With an SSO profile, you **do not** need to set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or `AWS_SESSION_TOKEN` environment variables. Instead, pass the profile name when running commands:

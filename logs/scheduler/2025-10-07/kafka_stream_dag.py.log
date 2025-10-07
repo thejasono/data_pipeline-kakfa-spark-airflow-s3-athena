@@ -1,0 +1,594 @@
+[2025-10-07T21:33:01.522+0100] {processor.py:161} INFO - Started process (PID=75) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:33:01.525+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:33:01.533+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:33:01.532+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:33:01.640+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:33:02.611+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:33:02.607+0100] {override.py:1858} INFO - Created Permission View: can read on DAG:name_stream_dag
+[2025-10-07T21:33:02.691+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:33:02.691+0100] {override.py:1858} INFO - Created Permission View: can edit on DAG:name_stream_dag
+[2025-10-07T21:33:03.361+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:33:03.360+0100] {override.py:1858} INFO - Created Permission View: can delete on DAG:name_stream_dag
+[2025-10-07T21:33:03.376+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:33:03.371+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:33:04.146+0100] {logging_mixin.py:188} WARNING - /home/airflow/.local/lib/python3.11/site-packages/airflow/models/dag.py:3669 DeprecationWarning: The dag_concurrency option in [core] has been renamed to max_active_tasks_per_dag - the old setting has been used, but please update your config.
+[2025-10-07T21:33:04.157+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:33:04.156+0100] {dag.py:3111} INFO - Creating ORM DAG for name_stream_dag
+[2025-10-07T21:33:04.354+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:33:04.354+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:25:00+00:00, run_after=2025-10-07 20:30:00+00:00
+[2025-10-07T21:33:04.749+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 3.244 seconds
+[2025-10-07T21:33:35.762+0100] {processor.py:161} INFO - Started process (PID=97) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:33:35.765+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:33:35.776+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:33:35.768+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:33:35.845+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:33:35.984+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:33:35.983+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:33:36.180+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.435 seconds
+[2025-10-07T21:34:09.619+0100] {processor.py:161} INFO - Started process (PID=110) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:34:09.637+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:34:09.835+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:34:09.800+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:34:10.256+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:34:11.026+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:34:11.026+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:34:12.475+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 3.017 seconds
+[2025-10-07T21:34:43.255+0100] {processor.py:161} INFO - Started process (PID=123) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:34:43.258+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:34:43.265+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:34:43.264+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:34:43.373+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:34:43.510+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:34:43.509+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:34:43.706+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.467 seconds
+[2025-10-07T21:35:15.280+0100] {processor.py:161} INFO - Started process (PID=136) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:35:15.320+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:35:15.334+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:35:15.332+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:35:15.453+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:35:15.979+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:35:15.979+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:35:16.535+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:35:16.534+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:30:00+00:00, run_after=2025-10-07 20:35:00+00:00
+[2025-10-07T21:35:16.993+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.834 seconds
+[2025-10-07T21:35:47.483+0100] {processor.py:161} INFO - Started process (PID=157) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:35:47.486+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:35:47.491+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:35:47.490+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:35:47.544+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:35:47.665+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:35:47.665+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:35:48.507+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.041 seconds
+[2025-10-07T21:36:19.460+0100] {processor.py:161} INFO - Started process (PID=162) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:36:19.466+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:36:19.477+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:36:19.474+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:36:19.528+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:36:19.791+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:36:19.790+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:36:20.681+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.241 seconds
+[2025-10-07T21:36:51.219+0100] {processor.py:161} INFO - Started process (PID=175) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:36:51.222+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:36:51.226+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:36:51.226+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:36:51.290+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:36:51.938+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:36:51.937+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:36:52.150+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.947 seconds
+[2025-10-07T21:37:22.882+0100] {processor.py:161} INFO - Started process (PID=188) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:37:22.903+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:37:24.562+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:37:24.561+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:37:24.644+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:37:24.822+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:37:24.821+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:37:25.068+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 2.267 seconds
+[2025-10-07T21:37:55.623+0100] {processor.py:161} INFO - Started process (PID=201) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:37:55.626+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:37:55.630+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:37:55.629+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:37:55.676+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:37:55.822+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:37:55.822+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:37:55.965+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:37:55.965+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:35:00+00:00, run_after=2025-10-07 20:40:00+00:00
+[2025-10-07T21:37:56.135+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.527 seconds
+[2025-10-07T21:38:26.729+0100] {processor.py:161} INFO - Started process (PID=214) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:38:26.732+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:38:26.744+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:38:26.743+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:38:26.791+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:38:26.899+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:38:26.899+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:38:27.027+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:38:27.027+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:35:00+00:00, run_after=2025-10-07 20:40:00+00:00
+[2025-10-07T21:38:27.172+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.462 seconds
+[2025-10-07T21:38:57.699+0100] {processor.py:161} INFO - Started process (PID=219) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:38:57.701+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:38:57.709+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:38:57.708+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:38:57.812+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:38:58.003+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:38:58.002+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:38:58.212+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:38:58.212+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:35:00+00:00, run_after=2025-10-07 20:40:00+00:00
+[2025-10-07T21:38:58.379+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.708 seconds
+[2025-10-07T21:39:28.999+0100] {processor.py:161} INFO - Started process (PID=231) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:39:29.002+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:39:29.008+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:39:29.007+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:39:29.056+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:39:29.234+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:39:29.234+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:39:29.434+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:39:29.425+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:35:00+00:00, run_after=2025-10-07 20:40:00+00:00
+[2025-10-07T21:39:29.625+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.643 seconds
+[2025-10-07T21:40:00.512+0100] {processor.py:161} INFO - Started process (PID=244) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:40:00.515+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:40:00.526+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:40:00.524+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:40:00.739+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:40:01.225+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:40:01.224+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:40:02.357+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.864 seconds
+[2025-10-07T21:40:32.744+0100] {processor.py:161} INFO - Started process (PID=266) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:40:32.748+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:40:32.758+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:40:32.757+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:40:32.931+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:40:33.517+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:40:33.516+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:40:34.009+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.286 seconds
+[2025-10-07T21:41:05.742+0100] {processor.py:161} INFO - Started process (PID=279) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:41:05.844+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:41:05.940+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:41:05.894+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:41:06.929+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:41:09.102+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:41:09.100+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:41:11.179+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 6.034 seconds
+[2025-10-07T21:41:42.147+0100] {processor.py:161} INFO - Started process (PID=292) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:41:42.159+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:41:42.176+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:41:42.172+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:41:42.522+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:41:43.189+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:41:43.189+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:41:43.942+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.877 seconds
+[2025-10-07T21:42:15.675+0100] {processor.py:161} INFO - Started process (PID=297) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:42:15.700+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:42:15.771+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:42:15.769+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:42:16.287+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:42:16.692+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:42:16.692+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:42:17.020+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.457 seconds
+[2025-10-07T21:42:47.663+0100] {processor.py:161} INFO - Started process (PID=311) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:42:47.667+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:42:47.680+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:42:47.678+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:42:47.814+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:42:48.009+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:42:48.008+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:42:48.145+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:42:48.144+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:40:00+00:00, run_after=2025-10-07 20:45:00+00:00
+[2025-10-07T21:42:48.348+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.741 seconds
+[2025-10-07T21:43:18.900+0100] {processor.py:161} INFO - Started process (PID=325) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:43:18.912+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:43:18.941+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:43:18.939+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:43:19.100+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:43:19.498+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:43:19.498+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:43:19.834+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:43:19.833+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:40:00+00:00, run_after=2025-10-07 20:45:00+00:00
+[2025-10-07T21:43:21.459+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 2.601 seconds
+[2025-10-07T21:43:52.130+0100] {processor.py:161} INFO - Started process (PID=339) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:43:52.132+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:43:52.164+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:43:52.151+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:43:52.329+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:43:52.783+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:43:52.782+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:43:53.148+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:43:53.147+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:40:00+00:00, run_after=2025-10-07 20:45:00+00:00
+[2025-10-07T21:43:53.620+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.582 seconds
+[2025-10-07T21:44:24.605+0100] {processor.py:161} INFO - Started process (PID=352) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:44:24.619+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:44:24.641+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:44:24.639+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:44:24.872+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:44:25.230+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:44:25.229+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:44:25.432+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:44:25.431+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:40:00+00:00, run_after=2025-10-07 20:45:00+00:00
+[2025-10-07T21:44:25.626+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.067 seconds
+[2025-10-07T21:44:56.126+0100] {processor.py:161} INFO - Started process (PID=365) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:44:56.129+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:44:56.136+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:44:56.135+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:44:56.189+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:44:56.370+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:44:56.362+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:44:56.476+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:44:56.475+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:40:00+00:00, run_after=2025-10-07 20:45:00+00:00
+[2025-10-07T21:44:56.647+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.540 seconds
+[2025-10-07T21:45:27.430+0100] {processor.py:161} INFO - Started process (PID=379) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:45:27.435+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:45:27.443+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:45:27.441+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:45:27.535+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:45:27.838+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:45:27.838+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:45:28.134+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.731 seconds
+[2025-10-07T21:45:58.720+0100] {processor.py:161} INFO - Started process (PID=392) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:45:58.722+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:45:58.731+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:45:58.730+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:45:58.779+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:45:58.882+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:45:58.882+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:45:59.033+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.347 seconds
+[2025-10-07T21:46:30.079+0100] {processor.py:161} INFO - Started process (PID=405) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:46:30.089+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:46:30.106+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:46:30.105+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:46:30.282+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:46:30.762+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:46:30.761+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:46:31.125+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.111 seconds
+[2025-10-07T21:47:02.160+0100] {processor.py:161} INFO - Started process (PID=418) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:47:02.163+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:47:02.180+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:47:02.179+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:47:02.382+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:47:02.766+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:47:02.765+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:47:03.380+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.259 seconds
+[2025-10-07T21:47:33.780+0100] {processor.py:161} INFO - Started process (PID=431) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:47:33.782+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:47:33.788+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:47:33.786+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:47:33.854+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:47:34.141+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:47:34.140+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:47:34.397+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:47:34.394+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:45:00+00:00, run_after=2025-10-07 20:50:00+00:00
+[2025-10-07T21:47:34.616+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.858 seconds
+[2025-10-07T21:48:05.316+0100] {processor.py:161} INFO - Started process (PID=436) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:48:05.319+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:48:05.328+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:48:05.327+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:48:05.417+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:48:05.574+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:48:05.574+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:48:05.663+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:48:05.663+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:45:00+00:00, run_after=2025-10-07 20:50:00+00:00
+[2025-10-07T21:48:05.807+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.519 seconds
+[2025-10-07T21:48:36.003+0100] {processor.py:161} INFO - Started process (PID=449) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:48:36.007+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:48:36.016+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:48:36.015+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:48:36.083+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:48:36.257+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:48:36.257+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:48:36.341+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:48:36.341+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:45:00+00:00, run_after=2025-10-07 20:50:00+00:00
+[2025-10-07T21:48:36.543+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.559 seconds
+[2025-10-07T21:49:07.587+0100] {processor.py:161} INFO - Started process (PID=462) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:49:07.595+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:49:07.617+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:49:07.614+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:49:08.111+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:49:08.730+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:49:08.730+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:49:08.884+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:49:08.884+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:45:00+00:00, run_after=2025-10-07 20:50:00+00:00
+[2025-10-07T21:49:09.242+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.788 seconds
+[2025-10-07T21:49:40.456+0100] {processor.py:161} INFO - Started process (PID=475) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:49:40.474+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:49:40.491+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:49:40.490+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:49:40.705+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:49:41.729+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:49:41.728+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:49:42.094+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:49:42.093+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:45:00+00:00, run_after=2025-10-07 20:50:00+00:00
+[2025-10-07T21:49:42.802+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 2.439 seconds
+[2025-10-07T21:50:13.269+0100] {processor.py:161} INFO - Started process (PID=497) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:50:13.275+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:50:13.289+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:50:13.288+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:50:13.360+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:50:13.536+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:50:13.535+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:50:13.906+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.665 seconds
+[2025-10-07T21:50:44.176+0100] {processor.py:161} INFO - Started process (PID=502) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:50:44.179+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:50:44.185+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:50:44.184+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:50:44.230+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:50:44.344+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:50:44.344+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:50:44.818+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.658 seconds
+[2025-10-07T21:51:15.232+0100] {processor.py:161} INFO - Started process (PID=516) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:51:15.236+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:51:15.269+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:51:15.265+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:51:15.346+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:51:15.624+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:51:15.623+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:51:15.959+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.779 seconds
+[2025-10-07T21:51:46.307+0100] {processor.py:161} INFO - Started process (PID=528) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:51:46.311+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:51:46.326+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:51:46.316+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:51:46.428+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:51:46.640+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:51:46.639+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:51:46.977+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.719 seconds
+[2025-10-07T21:52:17.408+0100] {processor.py:161} INFO - Started process (PID=540) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:52:17.421+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:52:17.429+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:52:17.426+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:52:17.572+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:52:17.761+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:52:17.760+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:52:17.868+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:52:17.867+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:50:00+00:00, run_after=2025-10-07 20:55:00+00:00
+[2025-10-07T21:52:17.993+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.622 seconds
+[2025-10-07T21:52:49.316+0100] {processor.py:161} INFO - Started process (PID=545) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:52:49.332+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:52:49.382+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:52:49.381+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:52:49.634+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:52:49.968+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:52:49.957+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:52:50.423+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:52:50.422+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:50:00+00:00, run_after=2025-10-07 20:55:00+00:00
+[2025-10-07T21:52:50.639+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.607 seconds
+[2025-10-07T21:53:21.842+0100] {processor.py:161} INFO - Started process (PID=558) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:53:21.859+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:53:21.889+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:53:21.884+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:53:22.384+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:53:23.037+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:53:23.036+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:53:23.194+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:53:23.193+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:50:00+00:00, run_after=2025-10-07 20:55:00+00:00
+[2025-10-07T21:53:23.446+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.747 seconds
+[2025-10-07T21:53:54.013+0100] {processor.py:161} INFO - Started process (PID=571) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:53:54.016+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:53:54.020+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:53:54.019+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:53:54.088+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:53:54.183+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:53:54.182+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:53:54.254+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:53:54.254+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:50:00+00:00, run_after=2025-10-07 20:55:00+00:00
+[2025-10-07T21:53:54.354+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.358 seconds
+[2025-10-07T21:54:24.748+0100] {processor.py:161} INFO - Started process (PID=584) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:54:24.751+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:54:24.759+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:54:24.758+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:54:24.821+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:54:25.003+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:54:25.003+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:54:25.126+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:54:25.125+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:50:00+00:00, run_after=2025-10-07 20:55:00+00:00
+[2025-10-07T21:54:25.276+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.543 seconds
+[2025-10-07T21:54:55.997+0100] {processor.py:161} INFO - Started process (PID=597) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:54:56.001+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:54:56.006+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:54:56.005+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:54:56.053+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:54:56.169+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:54:56.168+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:54:56.281+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:54:56.280+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:50:00+00:00, run_after=2025-10-07 20:55:00+00:00
+[2025-10-07T21:54:56.526+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.549 seconds
+[2025-10-07T21:55:27.276+0100] {processor.py:161} INFO - Started process (PID=611) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:55:27.290+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:55:27.314+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:55:27.313+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:55:27.596+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:55:27.824+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:55:27.824+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:55:28.338+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.097 seconds
+[2025-10-07T21:55:58.530+0100] {processor.py:161} INFO - Started process (PID=624) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:55:58.532+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:55:58.536+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:55:58.536+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:55:58.588+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:55:58.730+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:55:58.730+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:55:59.037+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.521 seconds
+[2025-10-07T21:56:29.881+0100] {processor.py:161} INFO - Started process (PID=637) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:56:29.886+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:56:29.892+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:56:29.891+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:56:30.048+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:56:30.440+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:56:30.439+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:56:30.947+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.094 seconds
+[2025-10-07T21:57:01.753+0100] {processor.py:161} INFO - Started process (PID=649) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:57:01.764+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:57:01.780+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:57:01.771+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:57:01.989+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:57:02.817+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:57:02.816+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:57:03.221+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.519 seconds
+[2025-10-07T21:57:34.236+0100] {processor.py:161} INFO - Started process (PID=663) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:57:34.275+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:57:34.294+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:57:34.293+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:57:34.811+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:57:35.439+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:57:35.438+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:57:35.819+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:57:35.819+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:55:00+00:00, run_after=2025-10-07 21:00:00+00:00
+[2025-10-07T21:57:36.553+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 2.371 seconds
+[2025-10-07T21:58:07.537+0100] {processor.py:161} INFO - Started process (PID=668) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:58:07.541+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:58:07.555+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:58:07.552+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:58:07.673+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:58:08.455+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:58:08.453+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:58:08.749+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:58:08.749+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:55:00+00:00, run_after=2025-10-07 21:00:00+00:00
+[2025-10-07T21:58:09.227+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.721 seconds
+[2025-10-07T21:58:40.465+0100] {processor.py:161} INFO - Started process (PID=680) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:58:40.474+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:58:40.492+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:58:40.490+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:58:40.710+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:58:41.289+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:58:41.288+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:58:41.566+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:58:41.566+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:55:00+00:00, run_after=2025-10-07 21:00:00+00:00
+[2025-10-07T21:58:41.906+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.502 seconds
+[2025-10-07T21:59:12.649+0100] {processor.py:161} INFO - Started process (PID=694) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:59:12.651+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:59:12.655+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:59:12.654+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:59:12.695+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:59:12.812+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:59:12.810+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:59:12.919+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:59:12.918+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:55:00+00:00, run_after=2025-10-07 21:00:00+00:00
+[2025-10-07T21:59:13.061+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.430 seconds
+[2025-10-07T21:59:43.976+0100] {processor.py:161} INFO - Started process (PID=707) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:59:43.990+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T21:59:44.004+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:59:44.003+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:59:44.119+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T21:59:44.339+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:59:44.338+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T21:59:44.414+0100] {logging_mixin.py:188} INFO - [2025-10-07T21:59:44.413+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 20:55:00+00:00, run_after=2025-10-07 21:00:00+00:00
+[2025-10-07T21:59:44.507+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.563 seconds
+[2025-10-07T22:00:15.769+0100] {processor.py:161} INFO - Started process (PID=729) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:00:15.793+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:00:15.839+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:00:15.832+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:00:16.338+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:00:16.706+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:00:16.705+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:00:17.091+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.602 seconds
+[2025-10-07T22:00:47.252+0100] {processor.py:161} INFO - Started process (PID=742) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:00:47.254+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:00:47.260+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:00:47.259+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:00:47.313+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:00:47.482+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:00:47.481+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:00:47.743+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.514 seconds
+[2025-10-07T22:01:18.205+0100] {processor.py:161} INFO - Started process (PID=747) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:01:18.211+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:01:18.218+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:01:18.216+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:01:18.360+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:01:18.641+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:01:18.640+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:01:18.945+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.790 seconds
+[2025-10-07T22:01:49.539+0100] {processor.py:161} INFO - Started process (PID=760) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:01:49.543+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:01:49.555+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:01:49.554+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:01:49.631+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:01:49.822+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:01:49.821+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:01:50.014+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.492 seconds
+[2025-10-07T22:02:20.782+0100] {processor.py:161} INFO - Started process (PID=773) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:02:20.814+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:02:20.850+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:02:20.848+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:02:21.066+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:02:21.408+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:02:21.407+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:02:21.532+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:02:21.532+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:00:00+00:00, run_after=2025-10-07 21:05:00+00:00
+[2025-10-07T22:02:21.715+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.975 seconds
+[2025-10-07T22:02:52.406+0100] {processor.py:161} INFO - Started process (PID=785) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:02:52.415+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:02:52.433+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:02:52.432+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:02:52.568+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:02:52.994+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:02:52.982+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:02:53.136+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:02:53.135+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:00:00+00:00, run_after=2025-10-07 21:05:00+00:00
+[2025-10-07T22:02:53.307+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.995 seconds
+[2025-10-07T22:03:23.969+0100] {processor.py:161} INFO - Started process (PID=798) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:03:23.971+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:03:23.975+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:03:23.974+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:03:24.018+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:03:24.121+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:03:24.121+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:03:24.221+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:03:24.220+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:00:00+00:00, run_after=2025-10-07 21:05:00+00:00
+[2025-10-07T22:03:24.339+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.390 seconds
+[2025-10-07T22:03:54.605+0100] {processor.py:161} INFO - Started process (PID=803) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:03:54.611+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:03:54.627+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:03:54.625+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:03:54.691+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:03:54.826+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:03:54.825+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:03:54.911+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:03:54.911+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:00:00+00:00, run_after=2025-10-07 21:05:00+00:00
+[2025-10-07T22:03:55.011+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.447 seconds
+[2025-10-07T22:04:25.431+0100] {processor.py:161} INFO - Started process (PID=817) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:04:25.433+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:04:25.441+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:04:25.441+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:04:25.489+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:04:25.681+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:04:25.681+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:04:25.795+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:04:25.795+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:00:00+00:00, run_after=2025-10-07 21:05:00+00:00
+[2025-10-07T22:04:25.985+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.576 seconds
+[2025-10-07T22:04:56.541+0100] {processor.py:161} INFO - Started process (PID=830) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:04:56.543+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:04:56.554+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:04:56.553+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:04:56.647+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:04:56.865+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:04:56.864+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:04:56.992+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:04:56.991+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:00:00+00:00, run_after=2025-10-07 21:05:00+00:00
+[2025-10-07T22:04:57.332+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.810 seconds
+[2025-10-07T22:05:27.646+0100] {processor.py:161} INFO - Started process (PID=852) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:05:27.649+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:05:27.654+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:05:27.653+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:05:27.703+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:05:27.850+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:05:27.850+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:05:28.058+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.425 seconds
+[2025-10-07T22:05:58.760+0100] {processor.py:161} INFO - Started process (PID=865) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:05:58.764+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:05:58.770+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:05:58.769+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:05:58.858+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:05:59.048+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:05:59.047+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:05:59.286+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.566 seconds
+[2025-10-07T22:06:29.878+0100] {processor.py:161} INFO - Started process (PID=870) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:06:29.884+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:06:29.891+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:06:29.890+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:06:29.934+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:06:30.037+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:06:30.037+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:06:30.202+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.347 seconds
+[2025-10-07T22:07:00.708+0100] {processor.py:161} INFO - Started process (PID=883) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:07:00.711+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:07:00.724+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:07:00.723+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:07:00.783+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:07:01.163+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:07:01.162+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:07:01.557+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.880 seconds
+[2025-10-07T22:07:32.233+0100] {processor.py:161} INFO - Started process (PID=896) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:07:32.235+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:07:32.238+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:07:32.237+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:07:32.273+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:07:32.353+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:07:32.352+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:07:32.414+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:07:32.414+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:05:00+00:00, run_after=2025-10-07 21:10:00+00:00
+[2025-10-07T22:07:32.521+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.302 seconds
+[2025-10-07T22:08:03.224+0100] {processor.py:161} INFO - Started process (PID=909) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:08:03.227+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:08:03.233+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:08:03.233+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:08:03.362+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:08:03.789+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:08:03.789+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:08:04.057+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:08:04.056+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:05:00+00:00, run_after=2025-10-07 21:10:00+00:00
+[2025-10-07T22:08:04.232+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.034 seconds
+[2025-10-07T22:08:34.923+0100] {processor.py:161} INFO - Started process (PID=914) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:08:34.927+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:08:34.936+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:08:34.935+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:08:35.018+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:08:35.160+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:08:35.159+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:08:35.254+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:08:35.253+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:05:00+00:00, run_after=2025-10-07 21:10:00+00:00
+[2025-10-07T22:08:35.403+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.503 seconds
+[2025-10-07T22:09:06.018+0100] {processor.py:161} INFO - Started process (PID=927) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:09:06.022+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:09:06.030+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:09:06.029+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:09:06.094+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:09:06.271+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:09:06.270+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:09:06.430+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:09:06.429+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:05:00+00:00, run_after=2025-10-07 21:10:00+00:00
+[2025-10-07T22:09:06.610+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.623 seconds
+[2025-10-07T22:09:37.018+0100] {processor.py:161} INFO - Started process (PID=940) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:09:37.022+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:09:37.028+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:09:37.027+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:09:37.083+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:09:37.213+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:09:37.212+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:09:37.276+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:09:37.275+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:05:00+00:00, run_after=2025-10-07 21:10:00+00:00
+[2025-10-07T22:09:37.411+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.412 seconds
+[2025-10-07T22:10:08.001+0100] {processor.py:161} INFO - Started process (PID=962) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:10:08.009+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:10:08.022+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:10:08.021+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:10:08.102+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:10:08.464+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:10:08.461+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:10:08.810+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.844 seconds
+[2025-10-07T22:10:39.534+0100] {processor.py:161} INFO - Started process (PID=975) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:10:39.543+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:10:39.549+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:10:39.548+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:10:39.631+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:10:39.809+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:10:39.808+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:10:40.166+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.652 seconds
+[2025-10-07T22:11:11.305+0100] {processor.py:161} INFO - Started process (PID=988) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:11:11.362+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:11:11.393+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:11:11.386+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:11:11.875+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:11:13.048+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:11:13.047+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:11:13.465+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 2.222 seconds
+[2025-10-07T22:11:44.107+0100] {processor.py:161} INFO - Started process (PID=993) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:11:44.122+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:11:44.138+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:11:44.135+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:11:44.335+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:11:44.590+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:11:44.589+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:11:45.065+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.982 seconds
+[2025-10-07T22:12:15.849+0100] {processor.py:161} INFO - Started process (PID=1006) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:12:15.857+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:12:15.870+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:12:15.869+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:12:15.998+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:12:16.214+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:12:16.213+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:12:16.345+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:12:16.345+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:10:00+00:00, run_after=2025-10-07 21:15:00+00:00
+[2025-10-07T22:12:16.561+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.748 seconds
+[2025-10-07T22:12:47.282+0100] {processor.py:161} INFO - Started process (PID=1019) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:12:47.285+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:12:47.289+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:12:47.288+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:12:47.342+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:12:47.509+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:12:47.509+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:12:47.582+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:12:47.581+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:10:00+00:00, run_after=2025-10-07 21:15:00+00:00
+[2025-10-07T22:12:47.722+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.455 seconds
+[2025-10-07T22:13:18.733+0100] {processor.py:161} INFO - Started process (PID=1032) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:13:18.736+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:13:18.753+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:13:18.750+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:13:18.904+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:13:19.183+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:13:19.181+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:13:19.377+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:13:19.376+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:10:00+00:00, run_after=2025-10-07 21:15:00+00:00
+[2025-10-07T22:13:19.601+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.905 seconds
+[2025-10-07T22:13:50.284+0100] {processor.py:161} INFO - Started process (PID=1044) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:13:50.288+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:13:50.296+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:13:50.294+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:13:50.369+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:13:50.690+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:13:50.678+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:13:51.001+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:13:50.993+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:10:00+00:00, run_after=2025-10-07 21:15:00+00:00
+[2025-10-07T22:13:51.178+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.917 seconds
+[2025-10-07T22:14:21.987+0100] {processor.py:161} INFO - Started process (PID=1049) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:14:21.998+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:14:22.003+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:14:22.002+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:14:22.120+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:14:22.398+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:14:22.397+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:14:22.485+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:14:22.485+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:10:00+00:00, run_after=2025-10-07 21:15:00+00:00
+[2025-10-07T22:14:22.659+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.703 seconds
+[2025-10-07T22:14:53.229+0100] {processor.py:161} INFO - Started process (PID=1062) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:14:53.232+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:14:53.237+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:14:53.236+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:14:53.286+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:14:53.485+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:14:53.484+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:14:53.592+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:14:53.592+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:10:00+00:00, run_after=2025-10-07 21:15:00+00:00
+[2025-10-07T22:14:53.716+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.504 seconds
+[2025-10-07T22:15:24.039+0100] {processor.py:161} INFO - Started process (PID=1084) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:15:24.041+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:15:24.046+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:15:24.045+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:15:24.207+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:15:24.518+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:15:24.517+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:15:25.117+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.139 seconds
+[2025-10-07T22:15:56.544+0100] {processor.py:161} INFO - Started process (PID=1097) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:15:56.558+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:15:56.591+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:15:56.586+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:15:56.884+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:15:57.271+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:15:57.271+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:15:57.621+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.136 seconds
+[2025-10-07T22:16:28.694+0100] {processor.py:161} INFO - Started process (PID=1109) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:16:28.705+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:16:28.775+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:16:28.774+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:16:29.193+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:16:30.321+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:16:30.319+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:16:32.106+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 3.500 seconds
+[2025-10-07T22:17:02.762+0100] {processor.py:161} INFO - Started process (PID=1114) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:17:02.769+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:17:02.775+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:17:02.774+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:17:02.900+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:17:03.115+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:17:03.114+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:17:03.417+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.681 seconds
+[2025-10-07T22:17:33.865+0100] {processor.py:161} INFO - Started process (PID=1127) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:17:33.875+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:17:33.886+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:17:33.882+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:17:33.962+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:17:34.192+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:17:34.192+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:17:34.366+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:17:34.364+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:15:00+00:00, run_after=2025-10-07 21:20:00+00:00
+[2025-10-07T22:17:34.510+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.667 seconds
+[2025-10-07T22:18:04.902+0100] {processor.py:161} INFO - Started process (PID=1140) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:18:04.906+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:18:04.911+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:18:04.910+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:18:04.968+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:18:05.081+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:18:05.080+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:18:05.152+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:18:05.152+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:15:00+00:00, run_after=2025-10-07 21:20:00+00:00
+[2025-10-07T22:18:05.276+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.390 seconds
+[2025-10-07T22:18:35.775+0100] {processor.py:161} INFO - Started process (PID=1154) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:18:35.782+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:18:35.808+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:18:35.807+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:18:35.987+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:18:36.174+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:18:36.173+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:18:36.304+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:18:36.303+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:15:00+00:00, run_after=2025-10-07 21:20:00+00:00
+[2025-10-07T22:18:36.530+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.796 seconds
+[2025-10-07T22:19:07.341+0100] {processor.py:161} INFO - Started process (PID=1168) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:19:07.359+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:19:07.369+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:19:07.367+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:19:07.431+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:19:07.855+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:19:07.854+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:19:08.151+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:19:08.145+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:15:00+00:00, run_after=2025-10-07 21:20:00+00:00
+[2025-10-07T22:19:08.386+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.098 seconds
+[2025-10-07T22:19:39.513+0100] {processor.py:161} INFO - Started process (PID=1173) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:19:39.529+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:19:39.535+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:19:39.534+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:19:39.594+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:19:39.737+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:19:39.736+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:19:39.826+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:19:39.826+0100] {dag.py:3947} INFO - Setting next_dagrun for name_stream_dag to 2025-10-07 21:15:00+00:00, run_after=2025-10-07 21:20:00+00:00
+[2025-10-07T22:19:39.961+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.468 seconds
+[2025-10-07T22:20:10.373+0100] {processor.py:161} INFO - Started process (PID=1195) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:20:10.375+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-07T22:20:10.379+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:20:10.378+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:20:10.421+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-07T22:20:10.507+0100] {logging_mixin.py:188} INFO - [2025-10-07T22:20:10.507+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-07T22:20:10.642+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 0.280 seconds

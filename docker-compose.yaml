@@ -30,8 +30,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}              # e.g., airflow_db
     volumes:
       - ./airflow_pgdata:/var/lib/postgresql/data
-      - ./postgres/conf/pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
-      - ./postgres/init:/docker-entrypoint-initdb.d
     logging:
       options:
         max-size: 10m

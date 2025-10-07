@@ -98,6 +98,60 @@ consumes `.env` and `.env.aws` automatically.
    The services pick up the credentials from `.env.aws`, so there is nothing else you need
    to change before the pipeline comes online.
 
+4. **Confirm everything is running**
+
+   ```powershell
+   docker compose ps
+   ```
+
+   When every container shows a `running` state, you can open the usual local endpoints
+   (for example, Airflow at http://localhost:8080). At this point the application stack is
+   ready for use with the temporary AWS credentials you just exported.
+
+5. **Inspect the S3 bucket with Amazon Athena (optional)**
+
+   Once JSON files are landing in your bucket you can validate their contents directly in
+   Athena:
+
+   1. Open the [Amazon Athena console](https://console.aws.amazon.com/athena/) in the same
+      region as your bucket (`eu-west-2`) and pick the **AmazonAthenaPreviewFunctionality**
+      (or another workgroup with access).
+   2. Choose **Settings → Manage → Query result location** and point it at an existing S3
+      folder you control (for example `s3://<your-bucket>/athena-results/`). Athena needs a
+      writable location to store query output.
+   3. In the query editor, run the following statements—replace the bucket/prefix with the
+      values from your `.env` file (for example `names` for `S3_OUTPUT_PREFIX`):
+
+      ```sql
+      CREATE DATABASE IF NOT EXISTS streaming_demo;
+
+      CREATE EXTERNAL TABLE IF NOT EXISTS streaming_demo.names_stream (
+        name        string,
+        gender      string,
+        address     string,
+        city        string,
+        nation      string,
+        zip         string,
+        latitude    double,
+        longitude   double,
+        email       string
+      )
+      ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
+      WITH SERDEPROPERTIES ('ignore.malformed.json' = 'true')
+      LOCATION 's3://<your-bucket>/<your-prefix>/';
+      ```
+
+   4. Run a quick validation query:
+
+      ```sql
+      SELECT * FROM streaming_demo.names_stream ORDER BY name LIMIT 20;
+      ```
+
+      You should see the flattened records that the Spark streaming job writes (matching
+      the schema defined above). If the result set is empty, confirm that new JSON objects
+      are arriving under the prefix and that the bucket/prefix in the `LOCATION` clause is
+      correct.
+
 ## 4. Use the profile without environment variables
 With an SSO profile, you **do not** need to set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or `AWS_SESSION_TOKEN` environment variables. Instead, pass the profile name when running commands:
 

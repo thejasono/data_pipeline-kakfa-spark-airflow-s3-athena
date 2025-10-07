@@ -31,7 +31,6 @@ sso_registration_scopes = sso:account:access
 > **Tip:** You can generate this structure with `aws configure sso` to avoid editing the file manually.
 
 ## 3. Log in with SSO
-=======
 Use the AWS CLI to establish a session for the configured profile:
 
 ```powershell

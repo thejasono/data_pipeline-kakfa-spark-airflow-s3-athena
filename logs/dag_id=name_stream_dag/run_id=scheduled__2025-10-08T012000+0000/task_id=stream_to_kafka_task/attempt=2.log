@@ -1,0 +1,30 @@
+[2025-10-08T02:31:32.227+0100] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2025-10-08T02:31:34.129+0100] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: name_stream_dag.stream_to_kafka_task scheduled__2025-10-08T01:20:00+00:00 [queued]>
+[2025-10-08T02:31:34.397+0100] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: name_stream_dag.stream_to_kafka_task scheduled__2025-10-08T01:20:00+00:00 [queued]>
+[2025-10-08T02:31:34.412+0100] {taskinstance.py:2306} INFO - Starting attempt 2 of 2
+[2025-10-08T02:31:34.816+0100] {taskinstance.py:2330} INFO - Executing <Task(PythonOperator): stream_to_kafka_task> on 2025-10-08 01:20:00+00:00
+[2025-10-08T02:31:35.017+0100] {standard_task_runner.py:64} INFO - Started process 87 to run task
+[2025-10-08T02:31:35.072+0100] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'name_stream_dag', 'stream_to_kafka_task', 'scheduled__2025-10-08T01:20:00+00:00', '--job-id', '33', '--raw', '--subdir', 'DAGS_FOLDER/kafka_stream_dag.py', '--cfg-path', '/tmp/tmpfck9g2hm']
+[2025-10-08T02:31:35.131+0100] {standard_task_runner.py:91} INFO - Job 33: Subtask stream_to_kafka_task
+[2025-10-08T02:31:40.202+0100] {task_command.py:426} INFO - Running <TaskInstance: name_stream_dag.stream_to_kafka_task scheduled__2025-10-08T01:20:00+00:00 [running]> on host a05d80976dcc
+[2025-10-08T02:31:44.974+0100] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='name_stream_dag' AIRFLOW_CTX_TASK_ID='stream_to_kafka_task' AIRFLOW_CTX_EXECUTION_DATE='2025-10-08T01:20:00+00:00' AIRFLOW_CTX_TRY_NUMBER='2' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2025-10-08T01:20:00+00:00'
+[2025-10-08T02:31:44.979+0100] {taskinstance.py:430} INFO - ::endgroup::
+[2025-10-08T02:31:46.523+0100] {logging_mixin.py:188} INFO - Created topic: names_topic
+[2025-10-08T02:31:58.848+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 0
+[2025-10-08T02:32:09.494+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 1
+[2025-10-08T02:32:19.880+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 2
+[2025-10-08T02:32:30.398+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 3
+[2025-10-08T02:32:41.082+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 4
+[2025-10-08T02:32:51.939+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 5
+[2025-10-08T02:33:02.478+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 6
+[2025-10-08T02:33:13.000+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 7
+[2025-10-08T02:33:23.719+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 8
+[2025-10-08T02:33:34.807+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 9
+[2025-10-08T02:33:45.230+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 10
+[2025-10-08T02:33:55.161+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 11
+[2025-10-08T02:33:55.191+0100] {python.py:237} INFO - Done. Returned value was: None
+[2025-10-08T02:33:55.255+0100] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2025-10-08T02:33:55.778+0100] {taskinstance.py:1206} INFO - Marking task as SUCCESS. dag_id=name_stream_dag, task_id=stream_to_kafka_task, run_id=scheduled__2025-10-08T01:20:00+00:00, execution_date=20251008T012000, start_date=20251008T013134, end_date=20251008T013355
+[2025-10-08T02:33:56.223+0100] {local_task_job_runner.py:243} INFO - Task exited with return code 0
+[2025-10-08T02:33:56.521+0100] {taskinstance.py:3503} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2025-10-08T02:33:56.588+0100] {local_task_job_runner.py:222} INFO - ::endgroup::

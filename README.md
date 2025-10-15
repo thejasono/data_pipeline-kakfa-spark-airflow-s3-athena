@@ -1,4 +1,4 @@
-# Data-Engineering-Streaming-Project
+# API-Kafka-Spark-Airflow-S3-Athena Pipeline
 ## **Introduction: Building a Dynamic Data Engineering Project**
 
 In our rapidly evolving digital age, data engineering has emerged as the backbone of the modern data-driven world. We're surrounded by an ever-increasing volume of data, and the ability to process and analyze this data in real-time is becoming a necessity rather than a luxury. In this guide, we'll delve deep into constructing a robust data pipeline, leveraging a combination of Kafka for data streaming, Spark for processing, Airflow for orchestration, Docker for containerization, S3 for storage, and Python as our primary scripting language.
@@ -64,13 +64,13 @@ Populate **both** environment files before you start the stack:
 - **Clone the Repository:** First, you'll need to clone the project from its GitHub repository using the following command:
 
 ```
-git clone https://github.com/<your-username>/spark-kafka-airflow-etl.git
+git clone https://github.com/<your-username>/api-kafka-spark-airflow-s3-athena.git
 ```
 
 Navigate to the project directory:
 
 ```
-cd spark-kafka-airflow-etl
+cd api-kafka-spark-airflow-s3-athena
 ```
 
 - **Deploy Services using `docker-compose`:** Within the project directory, you'll find a `docker-compose.yml` file. This file describes all the services and their

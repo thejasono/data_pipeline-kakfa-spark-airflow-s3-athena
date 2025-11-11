@@ -1,536 +1,707 @@
-An Event-Driven Data Pipeline Using APIs, Kafka, Spark, and AWS
-==============================================================
-
-Welcome back to the DataEngineering101 series! If this is your first stop, this collection breaks down foundational data engineering concepts one production-ready brick at a time. Previously, we built an end-to-end pipeline with Docker, Airflow, dbt, and Postgres. This time, we are shifting gears to the streaming world—designing a system that ingests live API data, moves it through Apache Kafka, processes it with Apache Spark, and lands the outputs in AWS for durable storage and downstream analytics.
-
-Just like the last article, this one is intentionally thorough. Use the section headers to hop directly to the parts that matter most to you.
-
-Workflow Overview
------------------
-
-Here’s the high-level journey our data will take:
-
-* **Ingest:** Continuously poll an external API and publish the responses to a Kafka topic.
-* **Buffer:** Use Kafka as the durable, replayable event log that decouples producers from consumers.
-* **Process:** Run structured streaming jobs in Spark to clean, enrich, and aggregate the Kafka events.
-* **Persist:** Write curated batch and streaming outputs into AWS S3 and catalog the results in AWS Glue/Athena.
-* **Orchestrate:** Coordinate infrastructure and jobs with AWS-native services like Managed Streaming for Kafka (MSK), EMR, and Step Functions (or Airflow on AWS).
-
-At a glance, that’s a lot of moving parts—APIs, Kafka clusters, Spark jobs, cloud storage, metadata catalogs, orchestration. The real value lies in how each piece hands off to the next with minimal coupling. Our go-to ally for building and testing all of this locally? Docker.
-
-Kafka 101: The Event Log for Everything
----------------------------------------
-
-If you have never touched Kafka before, picture it as a *commit log with superpowers*. At its core, Kafka is a distributed system made up of:
-
-* **Brokers:** Servers that store and serve the data. A production cluster typically has 3–5 brokers for fault tolerance. Locally, we often run a single broker container to keep things simple.
-* **Topics:** Named categories of data (for example, `orders`). Each topic is split into **partitions**, which are ordered, append-only logs that can be spread across brokers for scalability.
-* **Producers:** Clients that write messages to a topic. Each record is a key/value pair plus headers and a timestamp.
-* **Consumers:** Clients that read messages. Consumers join a **consumer group** so Kafka can assign partitions to group members automatically.
-
-### Topic anatomy for first-time users
-
-Topics can feel abstract, so let’s walk through what is physically stored on disk. Suppose you create a topic called `orders` with three partitions. On each broker you will see folders such as:
-
-```
-/kafka-logs/orders-0/00000000000000000000.log
-/kafka-logs/orders-1/00000000000000000000.log
-/kafka-logs/orders-2/00000000000000000000.log
-```
-
-Each log file is a partition. Inside the file, Kafka stores records as binary batches. Every record is stamped with a sequential **offset**. Offsets are zero-based and only increase; Kafka never edits the middle of the log. When you hear someone say “replay from offset 42,” it literally means “start reading the file from the 43rd record.”
-
-### Why partitions matter
-
-Partitions unlock parallelism. Imagine we have three partitions (`0`, `1`, `2`). When a producer sends an event with key `customer_42`, Kafka hashes the key and always writes it to the same partition. That guarantees ordering for that customer while allowing different customers to be processed simultaneously by different consumers.
-
-Each partition keeps track of a monotonically increasing **offset** (0, 1, 2, …). Consumers store the last processed offset in Kafka (or an external store). If a consumer dies, another one in the group resumes from the latest committed offset—no duplicates, no gaps.
-
-### Message lifecycle (produce → store → consume)
-
-1. **Produce:** The client serializes a Python dictionary (or Java object) into bytes, wraps it in a record that includes headers, the key, and the value, and sends it over TCP to the broker.
-2. **Persist:** The broker appends the bytes to the correct partition log, immediately fsyncs to disk (depending on `acks`), and replicates the batch to follower brokers if replication is enabled.
-3. **Consume:** Consumers fetch batches of bytes, deserialize them back into structured objects, and commit the last processed offset. That offset commit is just another small record written to Kafka’s internal `__consumer_offsets` topic.
-
-### Durability and retention
-
-Kafka writes messages to disk and replicates them across brokers. With a replication factor of 3, every partition has one leader and two followers. Producers only get an acknowledgment when the leader (and optionally the followers) confirm the write, so data survives broker failures. Retention policies decide how long messages live (by time, size, or compaction). For ETL-style pipelines we often keep 7–30 days so we can reprocess history when downstream logic changes.
-
-Retention is defined per topic. For example, to keep seven days of history you can run:
-
-```bash
-docker exec kafka kafka-configs --alter --entity-type topics \
-  --entity-name orders \
-  --add-config retention.ms=$((7*24*60*60*1000))
-```
-
-Kafka will automatically delete older segments when they expire, but offsets stay continuous—consumers simply find that older offsets are no longer available.
-
-### Working with Kafka on the command line
-
-Kafka ships with CLI tools that help you explore the cluster. If you have Docker Compose running from this project, you can open a new terminal and experiment:
-
-```bash
-# 1. Create a topic with 3 partitions and replication factor 1 (good enough for local dev)
-docker exec kafka kafka-topics --create \
-  --bootstrap-server kafka:9092 \
-  --topic orders \
-  --partitions 3 \
-  --replication-factor 1
-
-# 2. Describe topic metadata
-docker exec kafka kafka-topics --describe --topic orders --bootstrap-server kafka:9092
-
-# 3. Produce a message interactively
-docker exec -it kafka kafka-console-producer --topic orders --bootstrap-server kafka:9092
->{"order_id": "1", "customer_id": "alice", "net_amount": 17.25}
-
-# 4. Peek at messages (good for debugging)
-docker exec kafka kafka-console-consumer \
-  --topic orders \
-  --from-beginning \
-  --bootstrap-server kafka:9092
-```
-
-> **Tip for beginners:** If the console consumer prints binary gibberish, remember that Kafka stores bytes. When using Avro or Protobuf you must pass a deserializer. For plain JSON payloads like the quick test above, the consumer prints readable text.
-
-Here is what the main flags mean:
-
-* `--bootstrap-server`: the host:port pair the CLI connects to (matches the broker’s advertised listener).
-* `--topic`: the logical channel you are operating on.
-* `--partitions`: how many logs to create for the topic. Start with the number of concurrent consumers you expect.
-* `--from-beginning`: tells the consumer to start at offset `0` rather than the latest offset.
-
-Once you are comfortable with the CLI, moving to higher-level clients (Python, Java, Go) feels less mysterious.
-
-Spark 101: Distributed DataFrames and Lazy Execution
-----------------------------------------------------
-
-Apache Spark is a distributed analytics engine. When people say “Spark job,” they mean a program that consists of:
-
-* A **driver** process that defines the transformations (usually via the `SparkSession`).
-* Multiple **executors** that perform the work in parallel across a cluster.
-* A **cluster manager** (like Spark Standalone, YARN, Kubernetes, or on AWS, EMR) that provisions and monitors those executors.
-
-If you are brand new to Spark, map the architecture to something familiar:
-
-| Spark component | Analogy | What it actually does |
-|-----------------|---------|------------------------|
-| Driver | The “main” Python script | Parses your code, builds logical plans, and tells executors what to run |
-| Executor | Worker process | Executes the tasks (map, filter, aggregate) on data partitions |
-| Task | Function call | Smallest unit of work shipped from the driver to executors |
-| Job | Batch of stages | Triggered by an action such as `count()` or `write()` |
-
-Spark works with resilient distributed datasets (RDDs) under the hood, but in modern Spark you will mostly use **DataFrames** (tables with named columns). DataFrames are lazily evaluated: when you call `.select()` or `.groupBy()`, Spark builds a logical plan. The plan only executes when you perform an **action** (`show()`, `write`, `count`, etc.). Spark’s optimizer (Catalyst) rewrites the plan for efficiency before execution.
-
-You can inspect that plan with `.explain()`—a useful trick when you are learning:
-
-```python
-totals.explain()
-```
-
-The output shows the logical plan, the optimized plan, and the physical plan that actually runs on the executors.
-
-### Batch vs. Structured Streaming
-
-Structured Streaming lets you express streaming jobs using the same DataFrame API you already know from batch processing. Instead of returning a static DataFrame, `readStream` produces a never-ending table where each micro-batch adds new rows. Spark keeps track of progress using **checkpoints** (stored on disk/S3) so it can recover from failures and exactly-once semantics are achievable.
-
-### Running your first Spark job locally
-
-Follow these steps using the Docker Compose stack in this repo:
-
-1. **Open a shell inside the Spark master:** `docker exec -it spark-master bash`.
-2. **Launch `pyspark`:** `/opt/spark/bin/pyspark --master spark://spark-master:7077`.
-3. **Paste the minimal example below** and observe the output.
-
-```python
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
-
-spark = (
-    SparkSession.builder
-    .appName("intro-example")
-    .config("spark.sql.shuffle.partitions", "4")
-    .getOrCreate()
-)
-
-data = spark.createDataFrame([
-    ("customer_1", 125.40),
-    ("customer_2", 83.10),
-    ("customer_1", 64.99),
-], ["customer_id", "amount"])
-
-totals = data.groupBy("customer_id").sum("amount")
-
-totals.show()
-```
-
-> **What just happened?** The driver (your `pyspark` REPL) split the DataFrame into partitions, sent them to executor containers, waited for results, and printed them. Because the data set is tiny, the whole job finishes instantly, but the same code scales to millions of rows.
-
-When we graduate to Structured Streaming, the API stays consistent—you still build DataFrames and call `.writeStream` to publish the results.
-
-Understanding these concepts up front means the rest of this article can focus on wiring the pieces together rather than unraveling jargon along the way.
-
-Why Docker Still Matters
-------------------------
-
-Even though the target platform is AWS, it’s impractical (and expensive) to test every iteration in the cloud. Docker lets us assemble a representative sandbox: a Kafka broker, a schema registry, a Spark cluster, and an API simulator—each in its own container. This mirrors the production topology while preserving developer velocity.
-
-Containerizing the stack brings the same advantages we highlighted before:
-
-* **Isolation:** Kafka, Spark, and ancillary services each carry their own dependencies without conflicting.
-* **Reproducibility:** `docker compose up` recreates the environment on any teammate’s machine or CI agent.
-* **Portability:** Whether you are on macOS, Windows, or Linux, the containers behave identically.
-
-With that foundation, we can experiment locally, then translate configurations to AWS services when we are ready for scale.
-
-1. Docker Compose – Building the Streaming Sandbox
------------------------------------------------
-
-Our local `docker-compose.yml` describes four main services: the API generator, Kafka (plus ZooKeeper or KRaft), a Spark cluster, and optional observability tooling (like Kafka UI or Prometheus).
-
-A stripped-down service definition looks like this:
-
-```
+An Event-Driven Data Pipeline Using APIs, Kafka,
+Spark, and AWS
+Welcome back! In our previous article, we built a batch data pipeline using Docker, Airflow, dbt, and
+Postgres – a pipeline that ran on a schedule and delivered data for analysis each day. Now, we’re taking
+a big step forward into real-time processing. In this tutorial, we’ll build an event-driven (streaming)
+data pipeline using APIs, Apache Kafka, Apache Spark, and AWS. Don’t worry if those terms sound
+new – we’ll break down every core concept as we go. By the end, you’ll understand how data can flow
+continuously from a source API through Kafka and Spark, landing in Amazon S3 for downstream use, all
+while using Docker to simulate the setup locally and discussing how to transition to AWS in production.
+This is a comprehensive, beginner-friendly walkthrough. We’ll explain everything – what Kafka is (and
+what partitions and offsets mean), how Spark Structured Streaming processes data in micro-batches,
+why we use S3 for storage, and how we can orchestrate the whole pipeline. The goal is to show you a
+pipeline like you’d find in real production, but in a way that’s easy to follow for someone new to streaming
+data.
+Let’s dive in! (Feel free to jump to any section using the headings.)
+Pipeline Overview
+Before getting into the tools, let’s clarify what our pipeline will do from end to end. Unlike the previous
+batch pipeline (which ran in periodic intervals), this event-driven pipeline will handle data continuously
+as it arrives. Here’s the high-level workflow:
+1⃣ Data Generation (API Producer): A small app continuously fetches data from an API (e.g. a
+public “random user” API) and publishes these data events to Kafka. This simulates live events
+streaming into the system.
+2⃣ Streaming Ingestion with Kafka: Apache Kafka acts as a message broker – a durable buffer
+that decouples the producing side from the consuming side. The incoming API data is written
+into a Kafka topic (think of a topic as a named feed or log for events).
+3⃣ Real-Time Processing with Spark: Apache Spark (Structured Streaming) consumes the
+events from the Kafka topic in near real-time. Spark processes the data (for example, parsing
+JSON, filtering or aggregating fields) in small batches (micro-batches) and prepares it for storage.
+4⃣ Storage to Data Lake (Amazon S3): The processed data is continuously written out to storage
+– in this case, an Amazon S3 bucket (cloud object storage). S3 will hold our curated data in files
+(e.g. Parquet or JSON), which can later be analyzed or loaded into a data warehouse.
+5⃣ Orchestration & Monitoring: We use Docker to run all these components locally. In a
+production cloud environment, we’d use managed services (Amazon MSK for Kafka, Amazon
+EMR or Glue for Spark, etc.) and a tool to orchestrate and monitor the pipeline (for example,
+Apache Airflow or AWS Step Functions) to ensure each piece is running and connected. We’ll
+discuss how each component hands off to the next and how to keep the pipeline running
+reliably.
+•
+•
+•
+•
+•
+1(Imagine a pipeline where an API feed produces events -> Kafka buffers and distributes those events -> Spark
+consumes and transforms them -> and S3 stores the outputs. Each component plays a distinct role, which we’ll
+detail below.)
+From Batches to Real-Time: Why Event-Driven?
+Before we get hands-on, let’s quickly contrast batch vs. streaming pipelines. In a batch pipeline (like our
+last one), data was collected and processed in chunks (e.g. once per day or hour). This introduces
+natural delays. In many modern scenarios – imagine tracking user activity on a website or IoT sensor
+readings – we need data right away. That’s where an event-driven architecture shines.
+Event-driven pipeline means the system reacts to each new piece of data (event) as it happens.
+There isn’t a “wait until tomorrow’s schedule” – data flows continuously.
+This allows for real-time analytics and timely insights. For example, you could detect anomalies
+within minutes or update dashboards continuously.
+The trade-off is complexity: we need components that can handle continuous input and neverending processing. We also need to design for resiliency, since a streaming job might run for
+weeks or months nonstop.
+In our pipeline, Kafka and Spark are the backbone enabling this real-time flow. Let’s introduce these
+technologies in an accessible way.
+The Tech Stack (Tools Used)
+We will use a few key technologies in this pipeline, each with a specific role:
+Apache Kafka – A distributed event streaming platform. Kafka is like a durable queue, but with
+superpowers: it can handle high volumes of events, store them reliably, and allow multiple
+consumers to read streams of events independently. We’ll use Kafka to ingest and buffer the API
+data. (We’ll explain Kafka’s internals – brokers, topics, partitions, offsets – as we proceed.)
+Apache Spark (Structured Streaming) – A unified analytics engine for big data processing.
+Spark’s Structured Streaming library allows writing streaming computations that look like batch
+queries. Spark will consume data from Kafka, process it (transforming or aggregating it), and
+output results continuously to S3. (We’ll dive into how Spark’s micro-batch processing works and why
+it’s beginner-friendly for streaming.)
+Docker – We use Docker containers to emulate our production environment locally. Docker
+Compose will spin up services for Kafka (and its dependency Zookeeper), possibly an Airflow
+scheduler for orchestration, and a Spark environment. This way, everything runs on our machine
+but isolated in containers, similar to how they’d run on separate servers in production. Docker is
+the glue that ties our pipeline components together in development.
+Amazon S3 – Amazon Simple Storage Service (S3) will serve as the data lake storage. It’s a
+durable, scalable object store. In our local setup, we might just write to a local filesystem path to
+simulate S3, but in production we’ll use a real S3 bucket. Storing data in S3 decouples storage
+from processing – once data lands in S3, various tools (Athena, Redshift, etc.) can use it for
+analysis.
+Orchestration Tool (Airflow or similar) – In streaming pipelines, orchestration is a bit different
+from batch jobs. We aren’t scheduling a job to run and then stop; instead, we ensure continuous
+processes keep running. We’ll use Apache Airflow in our example to schedule the data producer
+script and manage any batch tasks (like launching the Spark job if needed). In production, you
+might use Airflow (perhaps with a sensor to monitor the streaming job) or a service like AWS
+•
+•
+•
+•
+•
+•
+•
+•
+2Step Functions to coordinate processes. We’ll discuss how we keep the pipeline running and
+recover from failures.
+Local vs. Production: Locally, we’ll run Kafka, Spark, etc. via Docker. In AWS, each component maps to a
+managed service for scalability:
+Kafka → Amazon MSK (Managed Streaming for Kafka) or Amazon Kinesis (an alternative
+streaming service).
+Spark → Amazon EMR (Elastic MapReduce) or AWS Glue (managed Spark ETL) for running Spark
+streaming applications on a cluster.
+S3 (storage) → still Amazon S3 in AWS (just a real bucket).
+Airflow → Amazon MWAA (Managed Workflows for Apache Airflow) or AWS Step Functions / AWS
+Lambda for orchestrating and reacting to events.
+Docker → In production, instead of Docker Compose, we deploy services on cloud infrastructure
+(containers on ECS/EKS or just use the managed services directly).
+Now that we know what we’re using, let’s set up our environment and then walk through building each
+part of the pipeline.
+Setting Up the Environment with Docker Compose
+In a real deployment, Kafka and Spark would run on separate servers or cloud services. For learning
+purposes, Docker Compose lets us run everything on one machine in isolated containers. It saves us
+from installing Kafka or Spark manually, and ensures all services can find each other via a virtual
+network.
+Why Docker? Installing Kafka, Zookeeper, and Spark on your local machine directly can get messy (each
+has its own dependencies, configurations, and even specific Java versions). Docker lets us use pre-built
+images that contain everything needed for each service, and we can start or tear down the whole stack
+with one command. It also mirrors how you might deploy with containers in production.
+Let’s create a docker-compose.yml file to define our services. At minimum, we need:
+Zookeeper: Kafka’s coordination service (Kafka relies on Zookeeper to manage brokers and
+topics metadata).
+Kafka broker: The Kafka server that will host our topics and handle message streaming.
+Spark: We can use a Spark container (there are Docker images that have Spark installed). For
+simplicity, we might run Spark in “local” mode inside a container, or use Spark’s standalone
+cluster with a master and worker.
+(Optional) Airflow: If we use Airflow to schedule the API calls, we’d include an Airflow scheduler
+& webserver, plus a metadata database (Postgres) in the compose file.
+(Optional) Local S3 emulator: In case we want to simulate S3, we could include something like
+LocalStack or MinIO. But to keep things simple, we might just write to a local folder and treat it
+as our “S3”.
+For brevity, we won’t show the entire Docker Compose file here, but let’s look at a snippet to see how
+one of the services is defined:
 services:
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    ports:
-      - "9092:9092"
-    depends_on:
-      zookeeper:
-        condition: service_healthy
-```
-
-Every entry follows the same template: choose an image, declare environment variables, expose ports, mount volumes if needed, and express startup dependencies. Once you understand this pattern, scaling the Compose file to include schema registries, Kafka Connect, or Spark history servers is straightforward.
-
-The Full Compose File
----------------------
-
-Our real configuration adds more detail:
-
-* A mock API container that emits JSON payloads at a configurable rate.
-* ZooKeeper (or KRaft) backing Kafka, with health checks to ensure the broker waits for coordination before starting.
-* Spark master and worker containers, with shared volumes for job submissions and configuration.
-* Utility containers like `kafdrop` for inspecting topics or `spark-submit` helpers.
-
-The Compose file also seeds a local S3-compatible object store (e.g., MinIO) so we can test AWS-style storage semantics before deploying to the cloud. By the time `docker compose up` finishes, you have a realistic playground for the end-to-end flow.
-
-How to Read a Service Definition
---------------------------------
-
-Each service block answers a few core questions:
-
-* **Hostname:** The service key doubles as the DNS entry Docker networks provide (e.g., other containers reach Kafka at `kafka:9092`).
-* **Image or Build:** Some components (like Kafka) use public images; others (like the API simulator) are built from local Dockerfiles to bake in custom logic.
-* **Environment:** Configuration values—bootstrap servers, topic names, schema registry URLs—often come from an `.env` file so we can swap between local and cloud-friendly settings.
-* **Volumes:** Spark jobs mount the `/opt/spark-apps` directory so they can access the same job artifacts the driver submits.
-* **Healthchecks & depends_on:** Guarantee that Kafka only starts after ZooKeeper is ready, and Spark waits for Kafka before beginning structured streaming.
-
-Once the local environment mirrors production behavior, we can implement each pipeline stage with confidence.
-
-2. Ingest: Publishing API Events into Kafka
--------------------------------------------
-
-Our data source is an HTTP API that emits transactional events—think e-commerce orders, IoT telemetry, or payment updates. A lightweight Python service polls the endpoint, converts responses into well-structured JSON messages, and pushes them to a Kafka topic.
-
-Key responsibilities of the producer:
-
-1. **Watermarking:** Track the last successful poll (via `updated_at` timestamps or incremental IDs) to avoid duplicate ingestion.
-2. **Batching & Rate Limiting:** Respect API quotas by batching requests and sleeping between polls.
-3. **Schema Enforcement:** Serialize payloads using Avro or JSON Schema so downstream consumers know the data contracts.
-4. **Error Handling:** Log failures, raise metrics, and optionally push problematic payloads to a dead-letter topic.
-
-Under the hood, the Python client (using `confluent-kafka` or `kafka-python`) opens a TCP connection to the broker, negotiates the protocol version, and starts an asynchronous send loop. You can tune delivery guarantees with producer configs:
-
-* `acks=all` waits for the leader *and* replicas to confirm writes—safer than the default `acks=1`.
-* `enable.idempotence=true` prevents duplicate records during retries.
-* `linger.ms` and `batch.size` let the client coalesce multiple API responses into a single network batch for throughput.
-
-In code, this might look like:
-
-```python
+zookeeper:
+•
+•
+•
+•
+•
+•
+•
+•
+•
+•
+3image: confluentinc/cp-zookeeper:7.4.0
+container_name: zookeeper
+ports:
+- "2181:2181" # Zookeeper listens on 2181
+environment:
+ZOOKEEPER_CLIENT_PORT: 2181
+ZOOKEEPER_TICK_TIME: 2000
+broker:
+image: confluentinc/cp-kafka:7.4.0
+container_name: broker
+depends_on:
+zookeeper:
+condition: service_healthy
+ports:
+- "9092:9092" # Kafka broker exposed on 9092
+environment:
+KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092
+KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+KAFKA_NUM_PARTITIONS: 3
+# (other Kafka configs omitted for brevity)
+<small>In this snippet, we define a Zookeeper service and a Kafka broker service. The Kafka broker’s config
+points to Zookeeper and sets some basic parameters: it’s listening on port 9092, and we set a default
+replication factor and number of partitions. (Replication factor 1 means no extra copies of data, fine for dev;
+in production you’d use 3 for reliability.) We also expose Kafka’s port so our client apps can connect.</small>
+When we run docker-compose up -d , Docker will pull these images and start the containers. We’ll
+have a running Kafka broker ready to accept connections.
+Tip: To verify Kafka is up, you can use Kafka’s command-line tools inside the container. For example, list
+topics with:
+docker exec broker kafka-topics --bootstrap-server localhost:9092 --list
+Initially, no topics will be listed (we haven’t created any yet). We’ll handle topic creation next.
+Kafka 101: Topics, Partitions, and Producers/Consumers
+Before we produce or consume data, it’s important to understand how Kafka organizes it.
+Apache Kafka is essentially a distributed commit log: producers append messages (events) to the end
+of a log, and consumers read those messages in order. A topic is like the name of a log or stream (for
+example, “user_signups” or “sensor_readings”). Topics are split into partitions to allow parallelism and
+scale.
+A topic is a category or feed to which messages are published. Think of it as the channel through
+which our data flows.
+•
+4Partitions: Each topic is divided into one or more partitions. A partition is an ordered,
+immutable sequence of messages – new messages are appended to the end. If a topic has
+multiple partitions, Kafka can distribute them across different brokers (servers). This allows
+multiple consumers to read in parallel and increases throughput. Ordering in Kafka is
+guaranteed per partition (not across the whole topic if there are multiple partitions).
+Offsets: Every message in a partition gets an incremental id called an offset. This is like a line
+number in the log. Consumers use offsets to keep track of where they are in the stream. For
+example, if a consumer has read up to offset 50 in partition 0, the next message it reads will be
+offset 51.
+Producers and Consumers: A producer is any application or service that sends data to Kafka
+(writes messages to a topic). A consumer is an application that reads data from a topic. In
+Kafka’s publish/subscribe model, multiple consumers can independently read the same topic
+without interfering with each other, and at their own pace. Consumers often belong to
+consumer groups – a group of consumers that split the load by each one reading different
+partitions of a topic (ensuring each message in the topic is processed by only one consumer in
+the group).
+For our pipeline: - We will create a topic (say, streaming_users or api_events ) that our API data
+will go into. - We might give it a few partitions – for example, 3 partitions to simulate parallelism. (In a
+dev environment with one broker, partitions will still exist logically. In production with multiple brokers,
+partitions would be distributed among brokers.) - Our data ingestion script will be the producer writing
+to this Kafka topic. - Our Spark job will act as the consumer, reading from the Kafka topic.
+Creating a Kafka Topic
+Kafka doesn’t require manual topic creation – by default, a topic is auto-created when a producer first
+publishes to it (if enabled). However, it’s good practice (and in many setups required) to create topics
+explicitly with the desired number of partitions and replication factor.
+We can create a topic using Kafka’s CLI inside the Kafka container:
+# Create a Kafka topic named "api_events" with 3 partitions and replication
+factor 1
+docker exec broker kafka-topics --create \
+--topic api_events \
+--bootstrap-server localhost:9092 \
+--partitions 3 \
+--replication-factor 1
+Output: If successful, you’ll see a confirmation that the topic was created. We can verify by listing topics
+again:
+docker exec broker kafka-topics --list --bootstrap-server localhost:9092
+Now api_events should appear in the list. Great! Kafka is ready to receive data.
+Why multiple partitions? Partitions allow Kafka to scale. With 3 partitions, Kafka can handle more
+throughput (producers can send to partitions in parallel, and consumers in a group can split the work
+by reading from different partitions). Also, if we had 3 Spark consumer tasks, each could be assigned
+•
+•
+•
+5one partition’s data. For our single Spark job, it will read all partitions, but under the hood Spark can
+parallelize reading from them. Even for development, it’s useful to see how partitioning works. Each
+message will go to one partition (by default, Kafka will round-robin or use a hash of a key if provided).
+What’s a Kafka partition, in simple terms? If a Kafka topic is like a highway for data,
+partitions are like lanes on the highway. Cars (messages) in the same lane maintain order
+relative to each other. Adding more lanes (partitions) means more cars can travel in
+parallel, but each lane has its own sequence. When consuming, you typically read each
+lane separately (possibly with multiple readers) and then combine results as needed.
+Partitions make Kafka horizontally scalable while preserving order in each lane.
+Now that we have a topic, let’s start sending some data into Kafka via our API source.
+Building the Data Producer (API to Kafka)
+We need something to fetch data from an API continuously and feed it into Kafka. This could be a
+simple Python script or an Airflow task. The idea is to simulate an endless stream of events coming from
+an external source.
+Our Example Scenario: Let’s use the Random User API (https://randomuser.me/) as a stand-in for a
+source of user data events. Every time you call this API, it returns a JSON with a random user’s details
+(name, email, etc.). In a real scenario, this could be any event source – e.g., an application emitting user
+sign-up events or an IoT device sending sensor readings.
+We’ll write a small producer script that does the following in a loop: 1. Call the API (get a new data
+point). 2. Send the result as a message to the Kafka api_events topic. 3. Wait a short interval (e.g., a
+few seconds) and repeat.
+This loop will generate a continuous stream of data in Kafka.
+Here’s a simplified Python example using the kafka-python library (or you could use Confluent’s
+Kafka library):
+import json, time
 import requests
-from confluent_kafka import SerializingProducer
-
-producer = SerializingProducer({...})
-
-def publish_orders():
-    params = {"updated_since": watermark()}
-    response = requests.get(API_URL, headers=AUTH_HEADER, params=params, timeout=10)
-    response.raise_for_status()
-
-    for record in response.json()["data"]:
-        key = record["order_id"]
-        value = order_schema.encode(record)
-        producer.produce(topic="orders", key=key, value=value)
-    producer.flush()
-```
-
-We package this script into the API container and schedule it with cron, Airflow, or a simple loop with backoff logic. The moment a payload lands on the `orders` topic, the streaming machinery takes over.
-
-To round out the picture, here is a bare-bones consumer that prints the same events:
-
-```python
-from confluent_kafka import DeserializingConsumer
-
-consumer = DeserializingConsumer({
-    "bootstrap.servers": "kafka:9092",
-    "key.deserializer": str,
-    "value.deserializer": order_schema.decode,
-    "group.id": "orders-debug",
-    "auto.offset.reset": "earliest",
-})
-
-consumer.subscribe(["orders"])
-
+from kafka import KafkaProducer
+producer = KafkaProducer(bootstrap_servers=["localhost:9092"],
+value_serializer=lambda v:
+json.dumps(v).encode('utf-8'))
+API_URL = "https://randomuser.me/api/"
 while True:
-    msg = consumer.poll(1.0)
-    if msg is None:
-        continue
-    if msg.error():
-        print(f"Consumer error: {msg.error()}")
-        continue
-    print(msg.key(), msg.value())
-    consumer.commit(msg)
-```
-
-By experimenting with these snippets locally, beginners see how Kafka’s offset management and delivery semantics work in practice.
-
-#### Producer configuration breakdown
-
-Replace the `{...}` placeholder in the `SerializingProducer` with a dictionary like this:
-
-```python
-producer = SerializingProducer({
-    "bootstrap.servers": "kafka:9092",    # matches docker-compose service name and port
-    "security.protocol": "PLAINTEXT",     # switch to SASL_SSL in production
-    "key.serializer": str.encode,          # converts Python strings into bytes
-    "value.serializer": order_schema.encode,
-    "enable.idempotence": True,            # guarantees exactly-once publishes when retries happen
-    "acks": "all",                         # wait for leader + replicas
-    "linger.ms": 50,                       # batch small API responses together
-})
-```
-
-The consumer receives a similar configuration but with deserializers (`str` or custom functions) so it can turn bytes back into Python objects.
-
-> **Why call `consumer.commit(msg)` manually?** Automatic commits (`enable.auto.commit=True`) work for simple use cases, but explicitly committing after processing ensures you only advance the offset when your business logic succeeds.
-
-3. Kafka Fundamentals: Topics, Partitions, and Retention
---------------------------------------------------------
-
-Kafka is the backbone of the pipeline. Three concepts matter most:
-
-* **Topics & Partitions:** Each topic is sharded into partitions to parallelize reads/writes. For ordered processing, key events consistently so that related records land in the same partition.
-* **Retention:** Configure how long Kafka keeps data. For near-real-time ETL, a 7–30 day retention window often strikes a balance between replay capability and storage cost.
-* **Consumer Groups:** Spark streaming jobs (and any other consumers) join a group; Kafka ensures each partition is consumed by only one member in a group. This pattern allows scaling Spark executors horizontally.
-
-We also set up:
-
-* **Schema Registry:** Enforce schemas for producers/consumers, enabling compatibility checks when fields evolve.
-* **Monitoring:** JMX metrics piped to Prometheus/Grafana to alert on lag, throughput, and broker health.
-* **Kafka Connect:** Optional but powerful—prebuilt connectors can stream data between Kafka and S3, databases, or Elasticsearch without writing custom code. For example, you can mirror curated Spark outputs back into Kafka for downstream microservices.
-
-> **Try it yourself:** Once the Docker cluster is up, run `docker exec kafka kafka-consumer-groups --bootstrap-server kafka:9092 --describe --group orders-debug` to inspect lag and offsets. Understanding these numbers helps you size partitions and tune consumer concurrency when workloads spike.
-
-4. Process: Streaming Transformations with Spark Structured Streaming
----------------------------------------------------------------------
-
-Once messages accumulate in Kafka, Apache Spark Structured Streaming ingests them in micro-batches (or continuous processing mode), applies transformations, and writes results out to AWS targets.
-
-A typical job does the following:
-
-1. **Read from Kafka:** Use the built-in Kafka source to read from topics, specifying starting offsets (earliest/latest) and checkpoint locations for fault tolerance.
-2. **Parse Payloads:** Deserialize Avro/JSON into Spark DataFrame columns using the registered schema.
-3. **Enrich:** Join against dimension tables or reference data (either in-memory broadcast joins or external systems like DynamoDB or RDS).
-4. **Aggregate:** Compute rolling metrics (e.g., hourly order volume, per-customer spend) using window functions.
-5. **Write:** Persist results to S3 in partitioned Parquet files and optionally push a summary back to Kafka or a REST endpoint.
-
-Here’s a simplified Spark job:
-
-```python
-import os
-
+# 1. Fetch data from API
+try:
+response = requests.get(API_URL)
+data = response.json()
+except Exception as e:
+6print(f"Error fetching data: {e}")
+time.sleep(5)
+continue
+# 2. Send data to Kafka
+producer.send("api_events", data)
+producer.flush() # ensure it's sent
+print("Sent data to Kafka:", data.get("results", [{}])[0].get("email"))
+# example field
+# 3. Sleep for a bit before next fetch
+time.sleep(5)
+<small>In this code: We configure a KafkaProducer to talk to our local Kafka broker. We fetch JSON from the
+Random User API, then we use producer.send to publish the JSON data to the api_events topic. We
+serialize the Python dict to JSON string bytes (via the value_serializer ). We flush to ensure delivery
+(usually not strictly necessary each time but good for demo). We print an email from the user data just to have
+some visible output.</small>
+A few things to note for beginners: - We’re sending the entire JSON response as one message. Kafka
+messages are just bytes – they don’t care what format. We choose JSON so it’s human-readable. In
+production, you might send more compact formats or even binary (e.g., Avro, Protobuf) for efficiency,
+but JSON is fine to start. - If the API returns multiple results in one call, we could also send each result
+separately. In the Random User API case, it returns one user by default. (We could increase the count to
+get multiple and loop through them.) - The producer.send is non-blocking; we call flush() to
+force it to send immediately and not batch, since we then sleep anyway. - The bootstrap_servers is
+pointing to localhost:9092 . In Docker, since our producer might be running on the host or in
+another container networked to Kafka, we made Kafka available on localhost 9092 in the compose. This
+matches our Kafka’s KAFKA_ADVERTISED_LISTENERS setting.
+We can run this script directly on our machine (assuming we have Python and kafka-python library
+installed) or we could dockerize it. If using Airflow, we might instead incorporate this logic in an Airflow
+DAG (using a PythonOperator that runs periodically).
+Using Airflow (Optional): We could create an Airflow DAG that triggers the above code every 5 seconds
+continuously. Airflow is usually for scheduled jobs, not infinite loops, but one approach is: - Use an
+Airflow Sensor or a loop of tasks to continuously run a small data fetch (maybe a task that sleeps and
+repeats). However, running an infinite loop inside Airflow isn’t ideal. - Alternatively, schedule the task
+every minute and have each run fetch, say, 12 batches (one every 5 seconds) then finish. This simulates
+continuous ingestion but with managed chunks. - For simplicity, many streaming pipelines use a
+standalone script or a lightweight service for ingestion, outside of Airflow. Airflow might just monitor it
+or be used to start/stop it.
+In our local demo, it might be easiest to run the producer script manually to populate Kafka. Once Kafka
+has some messages, we can move to Spark to consume them.
+At this point: If you run the producer, you should see logs that data is being sent to Kafka. You can also
+open another terminal to consume messages for debugging:
+7# Read messages from the beginning of the topic for debugging (console
+consumer)
+docker exec -it broker kafka-console-consumer \
+--bootstrap-server localhost:9092 \
+--topic api_events \
+--from-beginning
+This will print out any messages in the topic (in their raw JSON form). If you see JSON lines appearing
+that match the API data, congratulations – you have a live stream of events in Kafka!
+(Remember to stop the console consumer with Ctrl+C when done, or it will continue running, waiting for new
+messages.)
+Spark Structured Streaming: Consuming and Processing Data
+Now for the fun part – real-time processing with Apache Spark. We’ll use Spark’s Structured Streaming,
+which allows us to treat streaming data almost like a static DataFrame and use SQL-like operations.
+Spark Setup: In our Docker Compose, we included a Spark service. There are a few ways to do this: -
+Use a single-node Spark (run Spark in local mode). Some Docker images (like bitnami/spark or the
+official Spark image) allow you to run spark-submit or start a Spark shell. - Set up a Spark master
+and worker containers (Spark standalone cluster). Then submit jobs to the cluster. - Use PySpark within
+a container (like running a Python script that uses Spark).
+For simplicity, let’s assume we can invoke Spark from the command line. We might write our Spark
+streaming logic in a Python script (say spark_streaming.py ) and then run it with spark-submit
+inside the Spark container.
+First, we need to ensure Spark can connect to Kafka. This means including the Kafka connector package
+when running Spark. The package coordinates are org.apache.spark:spark-sqlkafka-0-10_2.12:<spark-version> . If using Spark 3.3 or 3.4, we’d match the version. For example,
+if Spark is 3.4.0, we use spark-sql-kafka-0-10_2.12:3.4.0 .
+We also need the Kafka client library (though it often comes with that package). Typically, spark-sqlkafka-0-10 will pull in the Kafka client jars. If not, specify org.apache.kafka:kafka-clients:
+3.3.2 (for example) as well.
+In spark-submit , you can use --packages to add these.
+Writing the Spark Streaming Job
+Our Spark job will do the following: 1. Connect to Kafka as a source, reading from the api_events
+topic. 2. Parse the incoming data (it will come in as bytes; we’ll convert bytes to string, then parse JSON).
+3. Perform any transformation. For demo, maybe select a few fields or add a timestamp. 4. Write the
+data out to a sink – here, Amazon S3. In local mode, we’ll write to a local directory (which could be
+mounted to the container to see results). On AWS, this would be an S3 path (e.g. s3://my-bucket/
+streamed-data/ ). 5. Keep running as a streaming query, outputting continuously.
+8Let’s outline a PySpark streaming script ( spark_streaming.py ):
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, window
-from pyspark.sql.types import StructType, StructField, StringType, TimestampType, DoubleType
-
-order_schema = StructType([
-    StructField("order_id", StringType()),
-    StructField("customer_id", StringType()),
-    StructField("event_time", TimestampType()),
-    StructField("status", StringType()),
-    StructField("net_amount", DoubleType()),
+from pyspark.sql.functions import col, from_json, timestamp_seconds
+from pyspark.sql.types import StructType, StructField, StringType,
+IntegerType
+# 1. Spark session with Kafka support
+spark = SparkSession.builder \
+.appName("KafkaSparkStreamingDemo") \
+.getOrCreate()
+# Optionally, set log level to reduce noise
+spark.sparkContext.setLogLevel("WARN")
+# 2. Define Kafka source DataFrame
+df = spark.readStream.format("kafka") \
+.option("kafka.bootstrap.servers", "broker:9092") \ # broker is the
+Kafka container hostname in our Docker network
+.option("subscribe", "api_events") \
+.option("startingOffsets", "earliest") \ # read all existing
+data first
+.load()
+# The dataframe 'df' has schema: key (binary), value (binary), topic,
+partition, offset, timestamp, etc.
+# We only care about the value (the message body).
+events_df = df.selectExpr("CAST(value AS STRING) as json_str")
+# 3. Define schema of our JSON (for better performance)
+json_schema = StructType([
+StructField("results",
+StructType([
+# results is an array in randomuser, but let's assume 1 result
+StructField("gender", StringType(), True),
+StructField("email", StringType(), True),
+StructField("dob", StructType([StructField("age", IntegerType(),
+True)]), True)
+]), True),
+StructField("info", StructType([StructField("seed", StringType(),
+True)]), True)
 ])
-
-spark = (
-    SparkSession.builder
-    .appName("orders-stream")
-    .getOrCreate()
+# Note: RandomUser JSON is nested; for brevity, I'm not capturing all fields,
+just a few.
+# Parse JSON string into a structured DataFrame
+parsed_df = events_df.select(from_json(col("json_str"),
+json_schema).alias("data"))
+# Flatten it a bit:
+flat_df = parsed_df.select(
+9col("data.results.email").alias("email"),
+col("data.results.gender").alias("gender"),
+col("data.results.dob.age").alias("age"),
+col("data.info.seed").alias("batch_id")
 )
-
-raw_orders = (
-    spark.readStream
-    .format("kafka")
-    .option("kafka.bootstrap.servers", os.environ["KAFKA_BROKERS"])
-    .option("subscribe", "orders")
-    .option("startingOffsets", "latest")
-    .load()
-)
-
-orders = (
-    raw_orders.selectExpr("CAST(value AS STRING)")
-    .select(from_json(col("value"), order_schema).alias("order"))
-    .select("order.*")
-)
-
-agg = (
-    orders
-    .withWatermark("event_time", "10 minutes")
-    .groupBy(window(col("event_time"), "5 minutes"), col("customer_id"))
-    .sum("net_amount")
-)
-
-query = (
-    agg.writeStream
-    .outputMode("append")
-    .format("parquet")
-    .option("checkpointLocation", "s3a://my-bucket/checkpoints/orders")
-    .option("path", "s3a://my-bucket/curated/orders_5min")
-    .start()
-)
-
+# 4. (Optional) Add processing time or any transformations
+from pyspark.sql.functions import current_timestamp
+output_df = flat_df.withColumn("processed_at", current_timestamp())
+# 5. Write to S3 (or local dir in our case)
+query = output_df.writeStream \
+.format("parquet") \
+.option("checkpointLocation", "/tmp/spark_checkpoint") \
+.option("path", "/tmp/processed_data") \
+.outputMode("append") \
+.start()
 query.awaitTermination()
-```
-
-Key Spark features we lean on:
-
-* **Checkpointing:** Preserves offsets and aggregation state so the job can recover after failures without reprocessing.
-* **Watermarking:** Drops late events beyond a threshold to control state growth.
-* **Exactly-once semantics:** With Kafka + Spark + S3, we can achieve effectively-once processing when using idempotent writes or merge-on-read tables (e.g., Apache Hudi or Delta Lake).
-
-Let’s unpack a few lines from the script so new Spark users can follow the execution:
-
-1. `spark.readStream.format("kafka")` tells Spark to instantiate the Kafka source; under the covers it uses the Kafka consumer API and manages offsets in the checkpoint directory you specify later.
-2. `.selectExpr("CAST(value AS STRING)")` converts the Kafka byte payload into a JSON string so we can parse it. The `from_json` function then maps the JSON to columns defined in `order_schema` (a `StructType`).
-3. `.withWatermark("event_time", "10 minutes")` signals how long Spark should wait for late events with older timestamps. Combined with `window`, Spark knows when it can safely emit aggregates.
-4. `.writeStream.format("parquet")` leverages the built-in Parquet sink. The `s3a://` prefix works because we include the `hadoop-aws` jar and configure AWS credentials via environment variables or IAM roles.
-
-#### Understanding the write options
-
-* `outputMode("append")` — emits a row only once the window is complete. Switch to `update` if you want intermediate aggregates.
-* `option("checkpointLocation", ...)` — directory where Spark saves offsets, schema information, and aggregation state. Losing this folder forces a replay from the earliest retained offsets.
-* `option("path", ...)` — the S3 prefix for new Parquet files. Spark automatically creates partition folders (e.g., `window=2024-05-01 12:00:00`) when the query involves windows or partitioned columns.
-* `.start()` — launches the continuous query and returns a `StreamingQuery` object. You can monitor `query.status` or `query.lastProgress` to debug throughput and latency.
-
-To run this job against the containers, we submit it with `spark-submit` from the master node:
-
-```bash
-docker exec spark-master /opt/spark/bin/spark-submit \
-  --master spark://spark-master:7077 \
-  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,org.apache.hadoop:hadoop-aws:3.3.4 \
-  --conf spark.hadoop.fs.s3a.access.key=minio \
-  --conf spark.hadoop.fs.s3a.secret.key=minio123 \
-  --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000 \
-  /opt/spark-apps/orders_stream.py
-```
-
-The package coordinates pull in the Kafka source connector and S3 client libraries. When you deploy to AWS EMR, those dependencies are pre-installed, and credentials come from IAM roles instead of static keys.
-
-5. Persist & Catalog: Landing Data in AWS
------------------------------------------
-
-Once transformations complete, we deliver the outputs to AWS services:
-
-* **S3 Buckets:** Store raw, refined, and aggregated zones as partitioned Parquet files. Use lifecycle policies to transition cold data to Glacier if needed.
-* **AWS Glue Data Catalog:** Maintain table metadata so Athena (and other query engines) know the schema and location of datasets.
-* **Athena & QuickSight:** Analysts query curated tables directly or build dashboards without hitting production clusters.
-* **Optional Warehousing:** For near-real-time serving, replicate curated data into Redshift, Snowflake, or Lakehouse tables via Apache Hudi, Delta Lake, or Iceberg running on EMR.
-
-A sample Glue crawler configuration points at `s3://my-bucket/curated/` and updates table definitions whenever new partitions land. Athena queries then become as simple as:
-
-```sql
-SELECT date_trunc('hour', event_time) AS hour, SUM(net_amount)
-FROM curated.orders_5min
-WHERE event_time >= current_timestamp - interval '7' day
-GROUP BY 1
-ORDER BY 1;
-```
-
-6. Orchestration: AWS-Native or Airflow on AWS
----------------------------------------------
-
-Coordinating the producers, Spark jobs, and downstream catalog updates can be handled in several ways:
-
-* **AWS Step Functions:** Model the workflow as a state machine—start the API producer (perhaps an ECS task or Lambda), trigger the EMR Serverless Spark job, then kick off a Glue crawler.
-* **Managed Airflow (MWAA):** Reuse familiar DAG patterns to start/stop EMR clusters, submit Spark jobs, and run health checks.
-* **EventBridge:** Use rule-based triggers so that when new data lands in S3, automated jobs (like Glue ETL or Lambda functions) respond immediately.
-
-No matter the orchestrator, the DAG/state machine should handle retries, alerting (via CloudWatch Alarms or SNS), and parameterization (e.g., dynamic output paths based on execution timestamps).
-
-7. From Local to AWS: Deployment Considerations
-----------------------------------------------
-
-With the pipeline proven in Docker, migrating to AWS involves a few mapping decisions:
-
-* **Kafka:** Replace the containerized broker with Amazon MSK (or self-managed EC2). Configure security groups, IAM, and encryption-at-rest.
-* **Spark:** Use EMR (clusters or EMR Serverless) or Glue Streaming jobs. Package PySpark code in an S3 location and submit via the AWS CLI or SDK.
-* **API Producer:** Run as an ECS Fargate task, Lambda (for lightweight workloads), or a Step Functions activity.
-* **Storage:** Point Spark’s `s3a://` paths to real S3 buckets with IAM roles granting least-privilege access.
-* **Monitoring:** Integrate with CloudWatch, AWS X-Ray, and MSK metrics. Forward Spark logs to CloudWatch Logs or an ELK stack.
-
-CI/CD pipelines (GitHub Actions, CodePipeline) can build Docker images, deploy infrastructure with Terraform/CloudFormation, and roll out Spark job updates with blue/green strategies.
-
-### Beginner runbook: from zero to first event
-
-1. **Clone the repo** and copy `.env.example` to `.env`, filling in API credentials.
-2. **Start the local stack:** `docker compose up --build`. Wait until Kafka, Spark, and the mock API report healthy.
-3. **Create a topic:** run the CLI commands above to create the `orders` topic.
-4. **Publish sample data:** use the API producer container (`docker exec api-producer python publish_orders.py --one-shot`) or the console producer to send a test event.
-5. **Tail the consumer:** run the console consumer or the Python snippet to ensure the event appears.
-6. **Submit the Spark job:** `spark-submit` the `orders_stream.py` script and watch the logs show micro-batch progress.
-7. **Inspect S3/MinIO:** open the MinIO UI (usually at `http://localhost:9001`) and verify Parquet files are written under the configured prefix.
-8. **Query the results:** use Athena (in AWS) or `aws athena start-query-execution` locally to validate the curated dataset.
-
-Treat this checklist as muscle memory; repeating it a few times cements how the components interact.
-
-8. Observability & Data Quality in Motion
------------------------------------------
-
-Streaming pipelines demand continuous visibility:
-
-* **Lag Monitoring:** Track Kafka consumer lag per topic/partition to ensure Spark keeps pace with producers.
-* **Data Quality:** Use tools like Deequ or Great Expectations integrated into Spark to validate schemas and value ranges on the fly.
-* **Dead-Letter Queues:** Capture malformed messages or processing failures for offline inspection.
-* **Alerting:** Wire CloudWatch alarms or Prometheus alerts to Slack, PagerDuty, or email so on-call engineers respond quickly to anomalies.
-
-Automated unit tests around schema evolution (e.g., adding optional fields) prevent incompatible changes from breaking consumers. Contract testing between the API producer and Spark ensures both sides agree on payload structures.
-
-9. Putting It All Together
---------------------------
-
-Let’s recap the lifecycle:
-
-1. A producer polls the external API, packages the payloads, and publishes them to Kafka with schema validation and watermarking.
-2. Kafka stores the stream durably, enabling multiple consumers (Spark, monitoring tools, ML feature pipelines) to read at their own pace.
-3. Spark Structured Streaming reads from Kafka, enriches and aggregates the events, and continuously writes curated outputs to S3 with checkpointing.
-4. AWS Glue catalogs the new data so Athena, QuickSight, or downstream warehouses can consume it with minimal friction.
-5. AWS Step Functions or Managed Airflow orchestrates the jobs, manages retries, and notifies the team if something breaks.
-
-The result is an event-driven architecture capable of handling surges in traffic, replaying data if downstream systems fail, and scaling independently at each stage.
-
-Conclusion
-----------
-
-By fusing APIs, Kafka, Spark, and AWS services, we constructed a resilient streaming pipeline that captures real-time events and transforms them into analytics-ready datasets. Docker provided the playground to iterate quickly; Kafka decoupled producers and consumers; Spark delivered scalable transformations; AWS supplied durable storage, cataloging, and orchestration.
-
-Whether you are extending an existing batch pipeline into real-time territory or building greenfield streaming infrastructure, this blueprint covers the critical pieces: local reproducibility, cloud deployment, data quality, and observability. From here, you can add ML feature stores, anomaly detection, or hybrid batch/stream processing without rewriting the foundation.
-
-Happy streaming!
+Let’s break down what this does in a beginner-friendly way:
+We create a SparkSession. In Structured Streaming, we use the same SparkSession as for batch.
+We use spark.readStream.format("kafka") to set up a streaming source from Kafka. We
+point it to the Kafka broker (note: inside the Spark container, it can reach Kafka by the service
+name broker if on the same Docker network; in other setups, use the appropriate host/port).
+We subscribe to our topic and set startingOffsets to earliest so we process from the
+beginning of the topic (for demo purposes; in a long-running job, you might use “latest” to only
+get new data).
+The df we get has the raw Kafka message. We cast the value from binary to string to get our
+JSON text. (We ignore the key and other metadata for now.)
+We define a schema for the JSON if we know it. This helps Spark decode the JSON faster and with
+correct types. The Random User API returns a nested JSON, but to keep it simple we pick a few
+fields (like email, gender, age, etc.). If we don’t define schema, we could use Spark’s
+schema_of_json to infer or just select with get_json_object , but explicit schema is
+clearer.
+We use from_json to parse the JSON string into a structured object ( data column), and then
+we extract fields into a flatter DataFrame flat_df . For example, we extract email and age.
+(Note: The path data.results.email is pseudo-code; since “results” is an array in the JSON,
+we might need data.results[0].email . But for brevity assume one result.)
+We add a column processed_at with the current timestamp to mark when we processed that
+event.
+Finally, we write the stream out in append mode to Parquet files. We specify a checkpoint
+location – this is important! Spark uses checkpointing to store the state of the stream (like the
+offsets it has read from Kafka). This ensures fault-tolerance: if the job restarts, it knows where it
+left off and won’t reprocess old data (ensuring exactly-once processing semantics in
+combination with how it writes output).
+The output path /tmp/processed_data in the container is where Parquet files will be written.
+In a real scenario, this would be an S3 URI (e.g. s3://mybucket/stream-output/ ). Actually,
+Spark can directly write to S3 if given an S3 path and proper credentials. For local testing, writing
+•
+•
+•
+•
+•
+•
+•
+•
+10to a mounted folder is fine. We could mount ./data from host to /tmp/processed_data in
+the container to easily see files.
+We call start() to begin the streaming query, and then awaitTermination() so the
+program waits indefinitely while data streams.
+Micro-batch vs Real Streaming: You might wonder, is Spark truly processing one event at a time? In
+Structured Streaming, by default it operates in micro-batches. It will group incoming events into small
+time intervals (the default can be a fraction of a second, or you can configure a trigger, say, 1 second).
+Each micro-batch is like a mini batch job where Spark will read whatever new messages arrived in Kafka,
+process them through the transformations, and write out a batch of Parquet files. This happens
+continuously. To us, it feels like a streaming job (we don’t have to manually run each batch), but under
+the hood Spark is doing a series of small batch jobs quickly. The result is near real-time, and the benefit
+is we can use the rich Spark API (DataFrames, SQL, aggregations, etc.) with minimal changes from batch
+code.
+What is Spark’s micro-batching? In simple terms, Spark Structured Streaming collects
+incoming events for a short, fixed interval (like 1 second or 100ms) and processes them
+together. This is in contrast to processing each event one-by-one. Micro-batching adds a
+tiny bit of latency (you wait for the micro-batch interval), but it makes the system more
+efficient and easier to work with using Spark’s existing APIs. From a beginner perspective,
+you can mostly write normal Spark code, and Spark takes care of continuously running it
+on new data. The micro-batch interval is usually small enough that you get results almost
+in real time (a second or two delay is often fine for many “real-time” needs).
+Now, how do we run this Spark job? If we have a Spark container, we could use spark-submit . For
+example, if using the Bitnami Spark image, we might do:
+docker exec -it spark-master spark-submit \
+--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0 \
+/opt/spark-apps/spark_streaming.py
+(This assumes our script is available in the container at /opt/spark-apps/spark_streaming.py ,
+possibly via a volume mount or baked into the image. The --packages option pulls in the Kafka
+connector.)
+If done right, Spark will start up, print a bunch of logs, and the streaming query will be running. You’ll
+see log lines for each micro-batch as it reads data from Kafka and writes to files.
+Verifying Spark Output
+We configured the output to Parquet at /tmp/processed_data . If we mounted that to our host (or if
+we exec into the container), we should see files appearing as data flows. They might be in partitioned
+directories by some default (Spark might create a directory structure if we had partition columns; in our
+case we didn’t partition by a column explicitly).
+For example, after a minute of running, listing the output directory might show something like:
+•
+11part-00000-...snappy.parquet
+part-00001-...snappy.parquet
+...
+Each corresponds to one micro-batch’s data. If we open one (using a Parquet viewer or Spark SQL), we’d
+see rows of data with the schema (email, gender, age, batch_id, processed_at).
+For a simpler check, we could also have written to console for debugging:
+# Instead of writing to Parquet, for debugging, do:
+query = output_df.writeStream.outputMode("append").format("console").start()
+This would print each batch of data to stdout. You’d see the rows in the logs. It’s useful to verify things
+are working, but console output isn’t feasible for long-term runs (it’s just for testing).
+Stop the Spark job by pressing Ctrl+C in the terminal where it’s running (if you ran it interactively). In a
+real deployment, Spark jobs might run on a cluster where you’d stop them via Spark’s job control or
+Yarn or AWS EMR interface.
+We have now built the pipeline locally: data is flowing from the API to Kafka, then from Kafka through
+Spark to storage.
+Let’s talk a bit about how this would translate to a production AWS environment and how we
+orchestrate the pieces together.
+Orchestrating and Productionizing the Pipeline
+In our local setup, we manually ran a producer script and a Spark job. In a production scenario, you’d
+want these to be deployed services that run automatically, and you’d use orchestration/scheduling tools
+to manage them.
+Orchestration considerations: - Starting the Producer: We need a process continuously pulling from
+the API and writing to Kafka. In a simple case, this could be a small standalone application or
+microservice. To manage it, one might use a supervisor or an orchestrator. For example, you could
+containerize the producer script and deploy it in Kubernetes or as a long-running ECS task or even an
+AWS Lambda triggered on a schedule (though Lambda has time limits, so not ideal for infinite loop –
+but you could schedule a Lambda every minute that fetches and pushes one batch to Kafka). - Starting/
+Monitoring the Spark Stream: The Spark streaming job should ideally run 24/7. On AWS EMR, you
+could run it as a step that doesn’t terminate (using Spark Streaming in yarn cluster mode). Alternatively,
+AWS Glue Streaming jobs can run continuously using similar Spark Structured Streaming under the
+hood. Whichever service runs it, you’ll need to ensure if it fails, it gets restarted. Tools like YARN on EMR
+can be configured to auto-restart failed apps, or you use an external scheduler (Airflow can trigger a
+Spark job and monitor it, for instance). - Airflow: You may still use Airflow to orchestrate parts of this
+pipeline. For example: - An Airflow DAG to trigger the Spark job (though usually streaming jobs aren’t
+re-triggered repeatedly, you might trigger it once or upon some event). - Or an Airflow DAG to manage
+the producer: e.g. using a loop to fetch data, as we discussed, or simply to ensure the producer
+container is up (Airflow could call a KubernetesPodOperator to ensure a deployment is running). -
+Airflow is more naturally suited to batch jobs, but it can be used for streaming pipelines by acting as a
+12controller – for instance, a DAG that checks “is my streaming job alive? If not, start it” or one that
+handles governance tasks like rotating output data, or kicking off downstream batch processes on the
+streamed data.
+Given Airflow was covered in the previous tutorial, here we’d clarify its role is different. In the earlier
+pipeline, Airflow orchestrated sequential tasks (extract then transform then load). In a streaming
+pipeline, there aren’t clear finish times for tasks; instead, Airflow might be used to orchestrate auxiliary
+tasks or manage deployments. Some teams schedule a streaming job to run daily but with a long
+duration, just to reset environment or incorporate new code, etc.
+AWS Integration:
+Let’s map our components to AWS services for a production deployment:
+API Source: If this were an internal API, it could be running on an EC2 or as a Lambda behind
+API Gateway. In our example we used a public API (randomuser.me). In production, you might
+not poll an external API continuously unless it’s your data source. But suppose you do (like
+pulling social media API for new posts). A more scalable approach might be to use a streaming
+ingestion service or the API’s webhook feature. AWS offers Amazon Kinesis Data Firehose or
+DMS for some sources, but for an HTTP API, you’d likely run a custom fetcher.
+Kafka: Use Amazon MSK to have a managed Kafka cluster. You would create a topic on MSK for
+your events. MSK takes care of running Kafka brokers, Zookeeper, etc. You’d just manage topics
+and data retention settings. Alternatively, AWS Kinesis Streams could replace Kafka – it serves a
+similar role (collecting streaming data). In our design, we stick to Kafka/MSK since that’s the
+chosen tech.
+Spark: Use Amazon EMR (Elastic MapReduce) which can run Spark jobs on a cluster of EC2
+instances. EMR has support for long-running clusters or transient clusters. For streaming, a longrunning EMR cluster running the Spark Streaming job is common. You’d submit your Spark job to
+EMR (using spark-submit or via steps API) and it would keep running. Another option is AWS
+Glue Streaming Jobs – Glue is a fully managed ETL service that runs Spark under the hood. Glue
+can run streaming ETL that reads from Kafka and writes to S3, similar to what we did. If you want
+to avoid managing servers, Glue might be attractive (you just provide the code and Glue runs it
+in its managed compute environment).
+S3: Simply an S3 bucket that you set up. You might partition the data by time (e.g. Spark could
+write into folders by date/hour if you add a partition column like event date). This makes
+downstream querying more efficient. Our example didn’t explicitly do that, but it’s a common
+enhancement.
+Downstream: Once data is in S3, you can use it further. For instance, AWS Athena (a serverless
+SQL query engine) can query the Parquet files in S3 directly – you’d just define a schema for
+them. This is great for ad-hoc analysis or feeding BI dashboards. Or you might load the data into
+a data warehouse (like Redshift) for more complex analysis or joining with other data. In the
+example pipeline prompt, we didn’t explicitly go beyond S3, but in production you likely will have
+a consumer of the S3 data.
+One pattern is to trigger an AWS Lambda when new files land in S3 (S3 event notifications) to
+perform some action, or to inform another system that new data is available.
+Another is to use AWS Glue (batch job) or Airflow to periodically crawl the S3 data and load into
+a database or run aggregations.
+Security & Scaling: In a production pipeline, you’d also think about: - Scaling Kafka: number of
+brokers, partitions, retention period for messages (do you keep data in Kafka for a day or a week?
+Typically you might not keep it indefinitely if it’s stored on S3). - Scaling Spark: the EMR cluster size
+•
+•
+•
+•
+•
+•
+•
+13(number of nodes) determines how many events per second you can process. The nice thing about
+Kafka + Spark is you can scale consumers to catch up if there’s a spike – Kafka will buffer events. Just
+ensure your retention in Kafka is long enough to hold data until processed (maybe set retention to e.g.
+24 hours so if Spark lags or is down, you have a day of cushion). - Exactly-once processing: It’s worth
+noting that Spark Structured Streaming + Kafka can achieve at-least-once by default, but with
+checkpointing and writing to a fault-tolerant sink (like S3 or a transactional sink), you can get effectively
+exactly-once. Our pipeline writing to Parquet on S3 with a checkpoint and without any global
+aggregations is typically idempotent – duplicates are possible if something retries, but one can design
+around it (for example, include unique IDs and deduplicate downstream). - Orchestration in AWS: You
+might use Amazon Managed Airflow (MWAA) to schedule any batch parts or monitor the streaming job’s
+health. Or use CloudWatch Alarms on the EMR job and Lambda to restart if needed.
+To keep this beginner-friendly, the main point is: the architecture we built locally translates to cloud
+services one-to-one, and managed services on AWS can handle the heavy lifting of running Kafka and
+Spark. We focus on our code and data logic, and let AWS handle servers.
+Cross-Component Handoffs
+Let’s narrate the journey of a single piece of data to reinforce understanding:
+Data generation (Producer) – Suppose a new user signed up on our app, and we call our API or
+get a user object. Our producer code takes this event (user data in JSON) and sends it to Kafka
+topic api_events . Kafka immediately appends this event to one of the partitions of the topic
+(say partition 1). Now the event is durably stored in Kafka.
+Kafka buffering – The event sits in Kafka. Kafka doesn’t know or care who will read it; it just logs
+it with an offset (e.g., offset 120 in partition 1).
+Spark ingestion – Spark Streaming is subscribed to the api_events topic. Spark periodically
+checks Kafka for new messages (this happens under the hood when we call .readStream and
+start the query). When our new event is available, Spark will fetch it (along with any other new
+events in that micro-batch window). Spark keeps track of the last offset it read in each partition –
+so let’s say before it had read up to offset 119, now it sees offset 120 is available, it will read that.
+Processing – Spark takes the raw JSON string of the event, parses it into structured columns
+(email, age, etc., as we coded). It might do transformations like filtering out certain events or
+adding a timestamp.
+Output to S3 – Spark then writes the transformed data out to S3. This could mean adding a new
+row in a Parquet file in an S3 folder. Because we’re in micro-batch mode, Spark might accumulate
+a few events and then write them together as one Parquet file once a threshold or time is met.
+This file is now stored in S3.
+Downstream consumption – Now that the event’s data is in S3, other systems can use it. For
+instance, an analyst can query it using Athena, or a daily batch job might aggregate all events
+per day for a summary report, or a dashboard might refresh to include the new data. In our
+pipeline scope, we stop at S3, but it’s good to see that the pipeline made the data available for
+use, which is the ultimate goal.
+Acknowledge & offset commit – As Spark processed and wrote the data, it will commit the
+offsets (in checkpoint metadata or to Kafka if using Kafka’s offset commit). This means Spark
+records “I have processed up to offset 120 in partition 1.” If Spark restarts, it will know to resume
+from 121 onward. Kafka’s role is done for that message – it will keep it for a configured retention
+time in case any other consumer needs it or in case our Spark job fell behind and needed to
+reread. After retention time, Kafka will drop it to save space.
+Continual loop – The producer keeps sending events, Kafka keeps logging them, Spark keeps
+reading and writing results. This loop can run continuously, delivering data in (near) real-time.
+1.
+2.
+3.
+4.
+5.
+6.
+7.
+8.
+14Throughout this, notice how each component is decoupled: - The producer doesn’t send directly to
+Spark or S3; it only knows about Kafka. It doesn’t need to know if Spark is slow or down – Kafka will
+buffer. - Spark doesn’t query the API or talk to the producer; it only reads from Kafka. If the API floods
+Kafka with data faster, Spark can scale out (with more executors) to catch up or process in parallel
+thanks to partitions. - S3 storage is separate from Spark’s processing memory. Once data lands in S3,
+Spark’s job for that micro-batch is done. If a downstream process needs to transform data from S3 to a
+warehouse, it’s another pipeline or job, which could be orchestrated by Airflow after certain intervals or
+triggered by S3 events.
+This decoupling is what makes event-driven architectures robust and scalable. Each component can fail
+or scale independently: if Spark goes down for an hour, Kafka will retain the data; when Spark comes
+back, it resumes. If Kafka backs up because Spark can’t keep up, we can scale Spark or add more
+consumers without touching the producer.
+Transitioning from Docker to AWS (Summary)
+To deploy our pipeline on AWS in a production-ready way, here’s a quick checklist of steps (this is more
+for your understanding rather than an exercise we do now):
+Set up Amazon MSK: Create a Kafka cluster on AWS (MSK). Configure the topic (number of
+partitions, etc.) – you can do this with Kafka tools pointed at MSK’s bootstrap servers.
+Deploy Producer: Package the data ingestion code (API polling) into a container or AWS
+Lambda. If using Lambda, ensure it can send to MSK (there’s VPC considerations). Alternatively,
+deploy a small EC2 or ECS service running that Python loop. Ensure it’s robust (e.g., it should
+handle API errors, and you might want multiple instances if high availability is needed).
+Spark on EMR: Create an EMR cluster with Spark. Upload the Spark streaming script to S3 or
+cluster. Run it as a step or deploy it as a long-running application (EMR has a cluster mode where
+you SSH and run spark-submit, or use Livy server, etc.). Configure checkpoints to a durable path
+(e.g., an S3 location) so state is preserved if the driver restarts. Alternatively, set up an AWS Glue
+Streaming Job with the same code, pointing to MSK and S3, and let Glue run it continuously.
+S3 Bucket: Create an S3 bucket for output data. Set proper permissions (the Spark EMR cluster
+or Glue needs write access to that bucket). Consider partitioning scheme for files (maybe
+partition by date).
+Orchestration/Monitoring: Use Airflow (MWAA) or AWS Step Functions to coordinate if
+necessary. For example, Airflow could be used to deploy the Spark job (though often you’d just
+start it manually or via EMR schedule). At minimum, set up CloudWatch alarms:
+For MSK (e.g., if consumer lag grows too large, alert).
+For EMR/Glue (if the job stops or errors out, alert).
+For the producer (if it’s a Lambda, use CloudWatch metrics or if EC2, maybe a heartbeat). These
+ensure you know if something breaks.
+Cost and Scale: Ensure you right-size your resources. Kafka MSK and EMR cost money
+continuously. If the data rate is low, maybe a single node MSK and a small Spark cluster (or even
+using AWS Kinesis & AWS Lambda for simple transformations) could suffice. If data is big, ensure
+enough partitions and Spark executors for parallelism.
+One huge advantage of AWS is that a lot of heavy lifting can be managed: MSK handles Kafka
+maintenance, EMR can autoscale Spark to some extent, and S3 scales automatically for storage.
+1.
+2.
+3.
+4.
+5.
+6.
+7.
+8.
+9.
+15Conclusion
+In this tutorial, we built an end-to-end event-driven data pipeline that mirrors what you’d find in many
+real-world data engineering scenarios. We started by containerizing our environment with Docker,
+ensuring we could run Kafka and Spark locally without hassle. Then we created a continuous data
+generator (simulating an API source) and used Kafka to ingest and buffer those events. We explained
+how Kafka topics, partitions, and offsets work – demystifying the concept of a distributed commit log
+for beginners.
+On the processing side, we introduced Spark Structured Streaming as a powerful yet approachable
+way to handle streaming data. We showed how a Spark job can read from Kafka in micro-batches, apply
+transformations using high-level DataFrame APIs, and write the results to Amazon S3 in real-time.
+Along the way, we discussed what micro-batching means (processing data in small time slices) and why
+it provides a nice balance between performance and real-time latency.
+Crucially, we maintained a narrative of how each component hands off to the next: the API producer
+hands data to Kafka, Kafka hands data to Spark, and Spark hands off the processed data to S3. Each
+component is specialized – Kafka decouples ingestion and consumption, Spark handles complex
+processing, S3 provides durable storage. This decoupling makes the pipeline scalable and fault-tolerant.
+We also touched on orchestration – using tools like Airflow to schedule or monitor these processes,
+and how in a continuous pipeline the role of orchestration shifts more towards keeping things running
+rather than one-time scheduling.
+By comparing our local Docker setup with an AWS deployment, we demonstrated how one can develop
+locally and then transition to cloud. The pipeline we built locally can be almost directly mapped to
+AWS managed services (MSK, EMR, etc.), which means you can prototype on your machine and then
+scale up in production.
+For someone early in their data engineering journey, you’ve now seen a full example of streaming data
+integration. You can take this foundation and extend it: for instance, add a real analytics step by
+querying the S3 data with a tool or loading it into a warehouse, or incorporate schema registries for
+Kafka for stricter data contracts, or use multiple topics and streaming joins for more complex pipelines.
+The key principles will remain the same:
+Don’t assume prior knowledge – break down the problem (we hope we did – explaining each
+concept like Kafka’s role, Spark’s approach, etc.).
+Use the right tool for each job – and let them do what they’re good at (Kafka for streaming
+transport, Spark for processing, etc.).
+Automate and orchestrate – ensure the pipeline can run reliably (Docker for local, Airflow/
+Cloud for prod).
+Think production – even in a toy example, we considered checkpoints, scaling, and monitoring,
+which are all critical when this runs for real.
+We encourage you to experiment with the code snippets provided. Try running the Docker setup, tweak
+the producer to send different data, alter the Spark transformation (maybe compute a running average
+or filter certain users), and see the results live. Streaming data opens up a world of possibilities for realtime analytics and reactive applications. With the knowledge gained here, you’re well on your way to
+building your own real-time data pipelines.
+Happy streaming and happy data engineering!

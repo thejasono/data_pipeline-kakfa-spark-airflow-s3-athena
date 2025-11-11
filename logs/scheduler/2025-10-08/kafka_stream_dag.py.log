@@ -618,3 +618,15 @@
 [2025-10-08T02:37:30.389+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
 [2025-10-08T02:37:31.145+0100] {logging_mixin.py:188} INFO - [2025-10-08T02:37:31.143+0100] {dag.py:3089} INFO - Sync 1 DAGs
 [2025-10-08T02:37:31.573+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.292 seconds
+[2025-10-08T03:31:06.716+0100] {processor.py:161} INFO - Started process (PID=67) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-08T03:31:06.745+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-08T03:31:06.754+0100] {logging_mixin.py:188} INFO - [2025-10-08T03:31:06.753+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-08T03:31:06.824+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-08T03:31:07.757+0100] {logging_mixin.py:188} INFO - [2025-10-08T03:31:07.757+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-08T03:31:08.506+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.823 seconds
+[2025-10-08T03:31:39.204+0100] {processor.py:161} INFO - Started process (PID=91) to work on /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-08T03:31:39.201+0100] {processor.py:830} INFO - Processing file /opt/airflow/dags/kafka_stream_dag.py for tasks to queue
+[2025-10-08T03:31:39.285+0100] {logging_mixin.py:188} INFO - [2025-10-08T03:31:39.280+0100] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-08T03:31:39.408+0100] {processor.py:840} INFO - DAG(s) 'name_stream_dag' retrieved from /opt/airflow/dags/kafka_stream_dag.py
+[2025-10-08T03:31:40.064+0100] {logging_mixin.py:188} INFO - [2025-10-08T03:31:40.063+0100] {dag.py:3089} INFO - Sync 1 DAGs
+[2025-10-08T03:31:40.657+0100] {processor.py:183} INFO - Processing /opt/airflow/dags/kafka_stream_dag.py took 1.709 seconds

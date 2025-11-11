@@ -1,0 +1,50 @@
+[2025-10-08T03:31:07.780+0100] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2025-10-08T03:31:08.192+0100] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: name_stream_dag.stream_to_kafka_task scheduled__2025-10-08T01:30:00+00:00 [queued]>
+[2025-10-08T03:31:08.224+0100] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: name_stream_dag.stream_to_kafka_task scheduled__2025-10-08T01:30:00+00:00 [queued]>
+[2025-10-08T03:31:08.226+0100] {taskinstance.py:2306} INFO - Starting attempt 2 of 2
+[2025-10-08T03:31:08.357+0100] {taskinstance.py:2330} INFO - Executing <Task(PythonOperator): stream_to_kafka_task> on 2025-10-08 01:30:00+00:00
+[2025-10-08T03:31:08.379+0100] {standard_task_runner.py:64} INFO - Started process 81 to run task
+[2025-10-08T03:31:08.390+0100] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'name_stream_dag', 'stream_to_kafka_task', 'scheduled__2025-10-08T01:30:00+00:00', '--job-id', '37', '--raw', '--subdir', 'DAGS_FOLDER/kafka_stream_dag.py', '--cfg-path', '/tmp/tmpeinmr68k']
+[2025-10-08T03:31:08.397+0100] {standard_task_runner.py:91} INFO - Job 37: Subtask stream_to_kafka_task
+[2025-10-08T03:31:08.794+0100] {task_command.py:426} INFO - Running <TaskInstance: name_stream_dag.stream_to_kafka_task scheduled__2025-10-08T01:30:00+00:00 [running]> on host 4344053ab152
+[2025-10-08T03:31:09.606+0100] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='name_stream_dag' AIRFLOW_CTX_TASK_ID='stream_to_kafka_task' AIRFLOW_CTX_EXECUTION_DATE='2025-10-08T01:30:00+00:00' AIRFLOW_CTX_TRY_NUMBER='2' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2025-10-08T01:30:00+00:00'
+[2025-10-08T03:31:09.607+0100] {taskinstance.py:430} INFO - ::endgroup::
+[2025-10-08T03:31:20.790+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 0
+[2025-10-08T03:31:31.137+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 1
+[2025-10-08T03:31:41.437+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 2
+[2025-10-08T03:31:51.874+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 3
+[2025-10-08T03:31:58.196+0100] {local_task_job_runner.py:124} ERROR - Received SIGTERM. Terminating subprocesses
+[2025-10-08T03:31:58.279+0100] {process_utils.py:132} INFO - Sending 15 to group 81. PIDs of all processes in the group: [81]
+[2025-10-08T03:31:58.321+0100] {process_utils.py:87} INFO - Sending the signal 15 to group 81
+[2025-10-08T03:31:58.371+0100] {taskinstance.py:2611} ERROR - Received SIGTERM. Terminating subprocesses.
+[2025-10-08T03:31:58.388+0100] {logging_mixin.py:188} INFO - Delivered to names_topic [0] @ offset 4
+[2025-10-08T03:31:58.390+0100] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2025-10-08T03:31:58.798+0100] {taskinstance.py:2905} ERROR - Task failed with exception
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/taskinstance.py", line 465, in _execute_task
+    result = _execute_callable(context=context, **execute_callable_kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/taskinstance.py", line 432, in _execute_callable
+    return execute_callable(context=context, **execute_callable_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/baseoperator.py", line 401, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/operators/python.py", line 235, in execute
+    return_value = self.execute_callable()
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/operators/python.py", line 252, in execute_callable
+    return self.python_callable(*self.op_args, **self.op_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/kafka_stream_dag.py", line 29, in _trigger_stream
+    initiate_stream()
+  File "/opt/airflow/dags/producer/kafka_streaming_service.py", line 223, in initiate_stream
+    time.sleep(PAUSE_INTERVAL)
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/taskinstance.py", line 2613, in signal_handler
+    raise AirflowTaskTerminated("Task received SIGTERM signal")
+airflow.exceptions.AirflowTaskTerminated: Task received SIGTERM signal
+[2025-10-08T03:31:58.981+0100] {taskinstance.py:1206} INFO - Marking task as FAILED. dag_id=name_stream_dag, task_id=stream_to_kafka_task, run_id=scheduled__2025-10-08T01:30:00+00:00, execution_date=20251008T013000, start_date=20251008T023108, end_date=20251008T023158
+[2025-10-08T03:31:59.734+0100] {process_utils.py:80} INFO - Process psutil.Process(pid=81, status='terminated', exitcode=2, started='03:31:07') (81) terminated with exit code 2
+[2025-10-08T03:31:59.756+0100] {local_task_job_runner.py:243} INFO - Task exited with return code 143
+[2025-10-08T03:32:00.401+0100] {taskinstance.py:3503} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2025-10-08T03:32:01.814+0100] {local_task_job_runner.py:222} INFO - ::endgroup::

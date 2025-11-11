@@ -1716,3 +1716,25 @@ File Path                              PID    Runtime      # DAGs    # Errors  L
 /opt/airflow/dags/kafka_stream_dag.py                           1           0  1.39s           2025-10-08T01:37:31
 ================================================================================
 [2025-10-08T02:37:49.931+0100] {manager.py:452} INFO - Exiting gracefully upon receiving signal 15
+[2025-10-08T03:31:05.922+0100] {manager.py:470} INFO - Processing files using up to 2 processes at a time 
+[2025-10-08T03:31:05.951+0100] {manager.py:471} INFO - Process each file at most once every 30 seconds
+[2025-10-08T03:31:05.954+0100] {manager.py:472} INFO - Checking for new files in /opt/airflow/dags every 300 seconds
+[2025-10-08T03:31:05.969+0100] {manager.py:737} INFO - Searching for files in /opt/airflow/dags
+[2025-10-08T03:31:06.095+0100] {manager.py:740} INFO - There are 1 files in /opt/airflow/dags
+[2025-10-08T03:31:06.810+0100] {manager.py:878} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                PID  Runtime      # DAGs    # Errors  Last Runtime    Last Run
+-------------------------------------  -----  ---------  --------  ----------  --------------  ----------
+/opt/airflow/dags/kafka_stream_dag.py     67  0.24s             0           0
+================================================================================
+[2025-10-08T03:31:36.836+0100] {manager.py:878} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                              PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+-------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/kafka_stream_dag.py                           1           0  1.97s           2025-10-08T02:31:08
+================================================================================
+[2025-10-08T03:31:59.209+0100] {manager.py:452} INFO - Exiting gracefully upon receiving signal 15

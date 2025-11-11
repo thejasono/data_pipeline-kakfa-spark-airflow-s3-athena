@@ -196,36 +196,41 @@ without interfering with each other, and at their own pace. Consumers often belo
 consumer groups – a group of consumers that split the load by each one reading different
 partitions of a topic (ensuring each message in the topic is processed by only one consumer in
 the group).
-For our pipeline: - We will create a topic (say, streaming_users or api_events ) that our API data
-will go into. - We might give it a few partitions – for example, 3 partitions to simulate parallelism. (In a
-dev environment with one broker, partitions will still exist logically. In production with multiple brokers,
-partitions would be distributed among brokers.) - Our data ingestion script will be the producer writing
-to this Kafka topic. - Our Spark job will act as the consumer, reading from the Kafka topic.
+For our pipeline: - We rely on a topic called names_topic , which is the default value of the
+KAFKA_TOPIC environment variable used by both the producer and the Spark job. - The producer’s
+ensure_topic helper provisions this topic with a single partition and replication factor of 1 before any
+records are published, so there’s no need for manual setup in local demos. - Our data ingestion script
+will be the producer writing to this Kafka topic. - Our Spark job will act as the consumer, reading from
+the Kafka topic.
 Creating a Kafka Topic
 Kafka doesn’t require manual topic creation – by default, a topic is auto-created when a producer first
 publishes to it (if enabled). However, it’s good practice (and in many setups required) to create topics
 explicitly with the desired number of partitions and replication factor.
-We can create a topic using Kafka’s CLI inside the Kafka container:
-# Create a Kafka topic named "api_events" with 3 partitions and replication
+We can still create a topic manually using Kafka’s CLI inside the Kafka container if we want to inspect the
+settings:
+# Create a Kafka topic named "names_topic" with 1 partition and replication
 factor 1
 docker exec broker kafka-topics --create \
---topic api_events \
+--topic names_topic \
 --bootstrap-server localhost:9092 \
---partitions 3 \
+--partitions 1 \
 --replication-factor 1
 Output: If successful, you’ll see a confirmation that the topic was created. We can verify by listing topics
 again:
 docker exec broker kafka-topics --list --bootstrap-server localhost:9092
-Now api_events should appear in the list. Great! Kafka is ready to receive data.
-Why multiple partitions? Partitions allow Kafka to scale. With 3 partitions, Kafka can handle more
-throughput (producers can send to partitions in parallel, and consumers in a group can split the work
-by reading from different partitions). Also, if we had 3 Spark consumer tasks, each could be assigned
-•
-•
-•
-5one partition’s data. For our single Spark job, it will read all partitions, but under the hood Spark can
-parallelize reading from them. Even for development, it’s useful to see how partitioning works. Each
-message will go to one partition (by default, Kafka will round-robin or use a hash of a key if provided).
+Now names_topic should appear in the list. Great! Kafka is ready to receive data.
+In practice you usually don’t have to run these commands manually. Our Airflow producer invokes
+ensure_topic(KAFKA_BOOTSTRAP, KAFKA_TOPIC, num_partitions=1, replication_factor=1) before it
+starts streaming users, so the topic will be created automatically with a single partition if it doesn’t
+already exist. Both the producer and the Spark consumer honour the same configuration knobs –
+KAFKA_TOPIC defaults to names_topic , while KAFKA_BOOTSTRAP (producer) and
+KAFKA_BOOTSTRAP_SERVERS (Spark) default to the kafka:19092 broker but can be overridden
+through environment variables when you deploy.
+Why a single partition? For this tutorial, we optimize for simplicity rather than throughput. With one
+partition, the names_topic feed preserves total ordering and matches the behaviour of the ensure_topic
+helper in our code. In larger deployments, increasing partitions allows multiple producers and
+consumers to work in parallel – the same CLI command above can be rerun with --partitions N when
+you need to scale out.
 What’s a Kafka partition, in simple terms? If a Kafka topic is like a highway for data,
 partitions are like lanes on the highway. Cars (messages) in the same lane maintain order
 relative to each other. Adding more lanes (partitions) means more cars can travel in
@@ -242,7 +247,7 @@ source of user data events. Every time you call this API, it returns a JSON with
 (name, email, etc.). In a real scenario, this could be any event source – e.g., an application emitting user
 sign-up events or an IoT device sending sensor readings.
 We’ll write a small producer script that does the following in a loop: 1. Call the API (get a new data
-point). 2. Send the result as a message to the Kafka api_events topic. 3. Wait a short interval (e.g., a
+point). 2. Send the result as a message to the Kafka names_topic topic. 3. Wait a short interval (e.g., a
 few seconds) and repeat.
 This loop will generate a continuous stream of data in Kafka.
 Here’s a simplified Python example using the kafka-python library (or you could use Confluent’s
@@ -264,14 +269,14 @@ except Exception as e:
 time.sleep(5)
 continue
 # 2. Send data to Kafka
-producer.send("api_events", data)
+producer.send("names_topic", data)
 producer.flush() # ensure it's sent
 print("Sent data to Kafka:", data.get("results", [{}])[0].get("email"))
 # example field
 # 3. Sleep for a bit before next fetch
 time.sleep(5)
 <small>In this code: We configure a KafkaProducer to talk to our local Kafka broker. We fetch JSON from the
-Random User API, then we use producer.send to publish the JSON data to the api_events topic. We
+Random User API, then we use producer.send to publish the JSON data to the names_topic topic. We
 serialize the Python dict to JSON string bytes (via the value_serializer ). We flush to ensure delivery
 (usually not strictly necessary each time but good for demo). We print an email from the user data just to have
 some visible output.</small>
@@ -304,7 +309,7 @@ open another terminal to consume messages for debugging:
 consumer)
 docker exec -it broker kafka-console-consumer \
 --bootstrap-server localhost:9092 \
---topic api_events \
+--topic names_topic \
 --from-beginning
 This will print out any messages in the topic (in their raw JSON form). If you see JSON lines appearing
 that match the API data, congratulations – you have a live stream of events in Kafka!
@@ -328,7 +333,7 @@ We also need the Kafka client library (though it often comes with that package).
 3.3.2 (for example) as well.
 In spark-submit , you can use --packages to add these.
 Writing the Spark Streaming Job
-Our Spark job will do the following: 1. Connect to Kafka as a source, reading from the api_events
+Our Spark job will do the following: 1. Connect to Kafka as a source, reading from the names_topic
 topic. 2. Parse the incoming data (it will come in as bytes; we’ll convert bytes to string, then parse JSON).
 3. Perform any transformation. For demo, maybe select a few fields or add a timestamp. 4. Write the
 data out to a sink – here, Amazon S3. In local mode, we’ll write to a local directory (which could be
@@ -349,7 +354,7 @@ spark.sparkContext.setLogLevel("WARN")
 df = spark.readStream.format("kafka") \
 .option("kafka.bootstrap.servers", "broker:9092") \ # broker is the
 Kafka container hostname in our Docker network
-.option("subscribe", "api_events") \
+.option("subscribe", "names_topic") \
 .option("startingOffsets", "earliest") \ # read all existing
 data first
 .load()
@@ -576,11 +581,11 @@ Cross-Component Handoffs
 Let’s narrate the journey of a single piece of data to reinforce understanding:
 Data generation (Producer) – Suppose a new user signed up on our app, and we call our API or
 get a user object. Our producer code takes this event (user data in JSON) and sends it to Kafka
-topic api_events . Kafka immediately appends this event to one of the partitions of the topic
+topic names_topic . Kafka immediately appends this event to one of the partitions of the topic
 (say partition 1). Now the event is durably stored in Kafka.
 Kafka buffering – The event sits in Kafka. Kafka doesn’t know or care who will read it; it just logs
 it with an offset (e.g., offset 120 in partition 1).
-Spark ingestion – Spark Streaming is subscribed to the api_events topic. Spark periodically
+Spark ingestion – Spark Streaming is subscribed to the names_topic topic. Spark periodically
 checks Kafka for new messages (this happens under the hood when we call .readStream and
 start the query). When our new event is available, Spark will fetch it (along with any other new
 events in that micro-batch window). Spark keeps track of the last offset it read in each partition –

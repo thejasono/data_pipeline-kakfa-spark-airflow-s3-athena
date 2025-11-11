@@ -125,8 +125,10 @@ Let’s create a docker-compose.yml file to define our services. At minimum, we 
 - **(Optional) Airflow:** If we use Airflow to schedule the API calls, we’d include an Airflow scheduler
   & webserver, plus a metadata database (Postgres) in the compose file.
 - **(Optional) Local S3 emulator:** In case we want to simulate S3, we could include something like
-  LocalStack or MinIO. But to keep things simple, we might just write to a local folder and treat it
-  as our “S3”.
+  LocalStack or MinIO. Regardless of the provider, the streaming job expects an S3 or
+  S3-compatible endpoint configured through environment variables such as `S3_BUCKET`,
+  `S3_ENDPOINT`, and the related credential settings so that the writers resolve to a real
+  object store.
 
 For brevity, we won’t show the entire Docker Compose file here, but let’s look at a snippet to see how
 our Kafka service is defined:
@@ -237,14 +239,14 @@ settings:
 # Create a Kafka topic named "names_topic" with 1 partition and replication
 factor 1
 docker exec kafka kafka-topics --create \
---topic api_events \
---bootstrap-server kafka:19092 \
---partitions 3 \
---replication-factor 1
+  --topic names_topic \
+  --bootstrap-server kafka:19092 \
+  --partitions 1 \
+  --replication-factor 1
 Output: If successful, you’ll see a confirmation that the topic was created. We can verify by listing topics
 again:
 docker exec kafka kafka-topics --list --bootstrap-server kafka:19092
-Now api_events should appear in the list. Great! Kafka is ready to receive data.
+Now names_topic should appear in the list. Great! Kafka is ready to receive data.
 Why multiple partitions? Partitions allow Kafka to scale. With 3 partitions, Kafka can handle more
 throughput (producers can send to partitions in parallel, and consumers in a group can split the work
 by reading from different partitions). Also, if we had 3 Spark consumer tasks, each could be assigned
@@ -336,9 +338,9 @@ open another terminal to consume messages for debugging:
 7# Read messages from the beginning of the topic for debugging (console
 consumer)
 docker exec -it kafka kafka-console-consumer \
---bootstrap-server kafka:19092 \
---topic api_events \
---from-beginning
+  --bootstrap-server kafka:19092 \
+  --topic names_topic \
+  --from-beginning
 This will print out any messages in the topic (in their raw JSON form). If you see JSON lines appearing
 that match the API data, congratulations – you have a live stream of events in Kafka!
 (Remember to stop the console consumer with Ctrl+C when done, or it will continue running, waiting for new
@@ -447,7 +449,7 @@ you can mostly write normal Spark code, and Spark takes care of continuously run
 on new data. The micro-batch interval is usually small enough that you get results almost
 in real time (a second or two delay is often fine for many “real-time” needs).
 Because docker-compose.yaml already launches the spark_streaming container, there’s no need to exec into the cluster and run spark-submit manually. The service waits for the Spark master, both workers, and Kafka to be healthy, then runs /opt/spark/app/spark_processing.py as soon as it starts. Restarting the container (or docker compose) is all it takes to redeploy the job.
-To monitor the stream, tail the container logs with docker compose logs -f spark_streaming or open the Spark master UI at http://localhost:8080 to inspect running applications and batch statistics. Each worker exposes its own UI on the mapped ports (8086 and 8087), which is handy for diagnosing skew or resource pressure.
+To monitor the stream, tail the container logs with docker compose logs -f spark_streaming or open the Spark master UI at http://localhost:8085 to inspect running applications and batch statistics. Each worker exposes its own UI on the mapped ports (8086 and 8087), which is handy for diagnosing skew or resource pressure.
 The sink writes JSON files to Amazon S3 at s3a://$S3_BUCKET/$S3_OUTPUT_PREFIX/. Use aws s3 ls s3://$S3_BUCKET/$S3_OUTPUT_PREFIX/ (or the AWS console) to confirm that new objects appear; every micro-batch produces another object containing the flattened fields from spark_processing.py. Checkpoints are stored alongside the data under S3_CHECKPOINT_PREFIX so Spark can resume from the correct offsets.
 Configuration is driven entirely by environment variables. Provide credentials with AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and optionally AWS_SESSION_TOKEN, or mount ~/.aws and set AWS_PROFILE. Customize endpoints or region settings through S3_ENDPOINT, S3_PATH_STYLE_ACCESS, and S3_REGION when targeting non-AWS object storage. docker-compose.yaml threads these values into spark_streaming so the code can authenticate and reach the bucket without edits.
 We have now built the pipeline locally: data is flowing from the API to Kafka, then from Kafka through

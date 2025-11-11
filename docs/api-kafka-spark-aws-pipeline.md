@@ -115,56 +115,54 @@ has its own dependencies, configurations, and even specific Java versions). Dock
 images that contain everything needed for each service, and we can start or tear down the whole stack
 with one command. It also mirrors how you might deploy with containers in production.
 Let’s create a docker-compose.yml file to define our services. At minimum, we need:
-Zookeeper: Kafka’s coordination service (Kafka relies on Zookeeper to manage brokers and
-topics metadata).
-Kafka broker: The Kafka server that will host our topics and handle message streaming.
-Spark: We can use a Spark container (there are Docker images that have Spark installed). For
-simplicity, we might run Spark in “local” mode inside a container, or use Spark’s standalone
-cluster with a master and worker.
-(Optional) Airflow: If we use Airflow to schedule the API calls, we’d include an Airflow scheduler
-& webserver, plus a metadata database (Postgres) in the compose file.
-(Optional) Local S3 emulator: In case we want to simulate S3, we could include something like
-LocalStack or MinIO. But to keep things simple, we might just write to a local folder and treat it
-as our “S3”.
+
+- **Kafka (single service in KRaft mode):** Kafka 3.3+ can run without a separate Zookeeper
+  process. We configure one container that runs both the broker and the controller roles
+  in the new KRaft (Kafka Raft) mode.
+- **Spark:** We can use a Spark container (there are Docker images that have Spark installed). For
+  simplicity, we might run Spark in “local” mode inside a container, or use Spark’s standalone
+  cluster with a master and worker.
+- **(Optional) Airflow:** If we use Airflow to schedule the API calls, we’d include an Airflow scheduler
+  & webserver, plus a metadata database (Postgres) in the compose file.
+- **(Optional) Local S3 emulator:** In case we want to simulate S3, we could include something like
+  LocalStack or MinIO. But to keep things simple, we might just write to a local folder and treat it
+  as our “S3”.
+
 For brevity, we won’t show the entire Docker Compose file here, but let’s look at a snippet to see how
-one of the services is defined:
+our Kafka service is defined:
+
+```yaml
 services:
-zookeeper:
-•
-•
-•
-•
-•
-•
-•
-•
-•
-•
-3image: confluentinc/cp-zookeeper:7.4.0
-container_name: zookeeper
-ports:
-- "2181:2181" # Zookeeper listens on 2181
-environment:
-ZOOKEEPER_CLIENT_PORT: 2181
-ZOOKEEPER_TICK_TIME: 2000
-broker:
-image: confluentinc/cp-kafka:7.4.0
-container_name: broker
-depends_on:
-zookeeper:
-condition: service_healthy
-ports:
-- "9092:9092" # Kafka broker exposed on 9092
-environment:
-KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092
-KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-KAFKA_NUM_PARTITIONS: 3
-# (other Kafka configs omitted for brevity)
-<small>In this snippet, we define a Zookeeper service and a Kafka broker service. The Kafka broker’s config
-points to Zookeeper and sets some basic parameters: it’s listening on port 9092, and we set a default
-replication factor and number of partitions. (Replication factor 1 means no extra copies of data, fine for dev;
-in production you’d use 3 for reliability.) We also expose Kafka’s port so our client apps can connect.</small>
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    environment:
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_NODE_ID=1
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:29093
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENERS=INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:19092,EXTERNAL://${DOCKER_HOST_IP:-localhost}:9092
+      - KAFKA_CLUSTER_ID=${KAFKA_CLUSTER_ID}
+      - CLUSTER_ID=${KAFKA_CLUSTER_ID}
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data
+      - KAFKA_LOG4J_LOGGERS=kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO
+    ports:
+      - "9092:9092"
+```
+
+<small>In this snippet, one container runs Kafka’s broker and controller roles using the KRaft
+configuration. The `INTERNAL` listener exposes `kafka:19092` to other services on the Docker
+network, while the `EXTERNAL` listener maps to `localhost:9092` on the host. After
+`docker-compose up`, you’ll have a running Kafka service ready to accept connections.</small>
+
 When we run docker-compose up -d , Docker will pull these images and start the containers. We’ll
 have a running Kafka broker ready to accept connections.
 
@@ -191,8 +189,14 @@ per-service overrides), so the container picks up credentials, the S3 bucket nam
 and the Kafka bootstrap servers needed to talk to the rest of the stack.
 Tip: To verify Kafka is up, you can use Kafka’s command-line tools inside the container. For example, list
 topics with:
-docker exec broker kafka-topics --bootstrap-server localhost:9092 --list
-Initially, no topics will be listed (we haven’t created any yet). We’ll handle topic creation next.
+
+```bash
+docker exec kafka kafka-topics --bootstrap-server kafka:19092 --list
+```
+
+The command runs inside the container, so it can use the internal listener (`kafka:19092`). From your host
+machine, you would target the external listener via `localhost:9092`. Initially, no topics will be listed (we
+haven’t created any yet). We’ll handle topic creation next.
 Kafka 101: Topics, Partitions, and Producers/Consumers
 Before we produce or consume data, it’s important to understand how Kafka organizes it.
 Apache Kafka is essentially a distributed commit log: producers append messages (events) to the end
@@ -218,26 +222,28 @@ without interfering with each other, and at their own pace. Consumers often belo
 consumer groups – a group of consumers that split the load by each one reading different
 partitions of a topic (ensuring each message in the topic is processed by only one consumer in
 the group).
-For our pipeline: - We will create a topic (say, streaming_users or api_events ) that our API data
-will go into. - We might give it a few partitions – for example, 3 partitions to simulate parallelism. (In a
-dev environment with one broker, partitions will still exist logically. In production with multiple brokers,
-partitions would be distributed among brokers.) - Our data ingestion script will be the producer writing
-to this Kafka topic. - Our Spark job will act as the consumer, reading from the Kafka topic.
+For our pipeline: - We rely on a topic called names_topic , which is the default value of the
+KAFKA_TOPIC environment variable used by both the producer and the Spark job. - The producer’s
+ensure_topic helper provisions this topic with a single partition and replication factor of 1 before any
+records are published, so there’s no need for manual setup in local demos. - Our data ingestion script
+will be the producer writing to this Kafka topic. - Our Spark job will act as the consumer, reading from
+the Kafka topic.
 Creating a Kafka Topic
 Kafka doesn’t require manual topic creation – by default, a topic is auto-created when a producer first
 publishes to it (if enabled). However, it’s good practice (and in many setups required) to create topics
 explicitly with the desired number of partitions and replication factor.
-We can create a topic using Kafka’s CLI inside the Kafka container:
-# Create a Kafka topic named "api_events" with 3 partitions and replication
+We can still create a topic manually using Kafka’s CLI inside the Kafka container if we want to inspect the
+settings:
+# Create a Kafka topic named "names_topic" with 1 partition and replication
 factor 1
-docker exec broker kafka-topics --create \
+docker exec kafka kafka-topics --create \
 --topic api_events \
---bootstrap-server localhost:9092 \
+--bootstrap-server kafka:19092 \
 --partitions 3 \
 --replication-factor 1
 Output: If successful, you’ll see a confirmation that the topic was created. We can verify by listing topics
 again:
-docker exec broker kafka-topics --list --bootstrap-server localhost:9092
+docker exec kafka kafka-topics --list --bootstrap-server kafka:19092
 Now api_events should appear in the list. Great! Kafka is ready to receive data.
 Why multiple partitions? Partitions allow Kafka to scale. With 3 partitions, Kafka can handle more
 throughput (producers can send to partitions in parallel, and consumers in a group can split the work
@@ -264,50 +270,55 @@ source of user data events. Every time you call this API, it returns a JSON with
 (name, email, etc.). In a real scenario, this could be any event source – e.g., an application emitting user
 sign-up events or an IoT device sending sensor readings.
 We’ll write a small producer script that does the following in a loop: 1. Call the API (get a new data
-point). 2. Send the result as a message to the Kafka api_events topic. 3. Wait a short interval (e.g., a
+point). 2. Send the result as a message to the Kafka names_topic topic. 3. Wait a short interval (e.g., a
 few seconds) and repeat.
 This loop will generate a continuous stream of data in Kafka.
-Here’s a simplified Python example using the kafka-python library (or you could use Confluent’s
-Kafka library):
-import json, time
-import requests
-from kafka import KafkaProducer
-producer = KafkaProducer(bootstrap_servers=["localhost:9092"],
-value_serializer=lambda v:
-json.dumps(v).encode('utf-8'))
-API_URL = "https://randomuser.me/api/"
-while True:
-# 1. Fetch data from API
-try:
-response = requests.get(API_URL)
-data = response.json()
-except Exception as e:
-6print(f"Error fetching data: {e}")
-time.sleep(5)
-continue
-# 2. Send data to Kafka
-producer.send("api_events", data)
-producer.flush() # ensure it's sent
-print("Sent data to Kafka:", data.get("results", [{}])[0].get("email"))
-# example field
-# 3. Sleep for a bit before next fetch
-time.sleep(5)
-<small>In this code: We configure a KafkaProducer to talk to our local Kafka broker. We fetch JSON from the
-Random User API, then we use producer.send to publish the JSON data to the api_events topic. We
-serialize the Python dict to JSON string bytes (via the value_serializer ). We flush to ensure delivery
-(usually not strictly necessary each time but good for demo). We print an email from the user data just to have
-some visible output.</small>
-A few things to note for beginners: - We’re sending the entire JSON response as one message. Kafka
-messages are just bytes – they don’t care what format. We choose JSON so it’s human-readable. In
-production, you might send more compact formats or even binary (e.g., Avro, Protobuf) for efficiency,
-but JSON is fine to start. - If the API returns multiple results in one call, we could also send each result
-separately. In the Random User API case, it returns one user by default. (We could increase the count to
-get multiple and loop through them.) - The producer.send is non-blocking; we call flush() to
-force it to send immediately and not batch, since we then sleep anyway. - The bootstrap_servers is
-pointing to localhost:9092 . In Docker, since our producer might be running on the host or in
-another container networked to Kafka, we made Kafka available on localhost 9092 in the compose. This
-matches our Kafka’s KAFKA_ADVERTISED_LISTENERS setting.
-We can run this script directly on our machine (assuming we have Python and kafka-python library
+Rather than a toy snippet, this repository ships with a production-ready Airflow task in
+`dags/producer/kafka_streaming_service.py`. The module ensures the topic exists, builds a
+Confluent `Producer`, and then performs a fetch → transform → publish cycle for the duration of
+each run:
+
+```python
+KAFKA_BOOTSTRAP = "kafka:19092"
+PAUSE_INTERVAL = 10
+STREAMING_DURATION = 120
+
+def transform_user_data(raw: dict[str, Any]) -> dict[str, Any]:
+    postcode_hashed = str(encrypt_zip(raw["location"]["postcode"]))
+    return {
+        "name": f"{raw['name']['title']}. {raw['name']['first']} {raw['name']['last']}",
+        "zip": postcode_hashed,
+        "latitude": safe_float(raw["location"]["coordinates"]["latitude"]),
+        "longitude": safe_float(raw["location"]["coordinates"]["longitude"]),
+        # ...other normalized fields...
+    }
+
+def initiate_stream() -> None:
+    ensure_topic(KAFKA_BOOTSTRAP, KAFKA_TOPIC)
+    producer = build_producer(KAFKA_BOOTSTRAP)
+    for _ in range(STREAMING_DURATION // PAUSE_INTERVAL):
+        payload = transform_user_data(retrieve_user_data())
+        publish_once(producer, KAFKA_TOPIC, payload)
+        time.sleep(PAUSE_INTERVAL)
+```
+
+Key details worth calling out:
+
+* The Confluent client (`confluent_kafka.Producer`) enables idempotent writes, compression, and
+  acks=all out of the box while targeting the Docker bootstrap server `kafka:19092`, so the same
+  Airflow task works both locally and against MSK with a configuration tweak.
+* `transform_user_data` flattens the Random User payload, casts latitude/longitude to floats via
+  `safe_float`, and hashes the postcode with `encrypt_zip` to pseudonymize potentially sensitive
+  location data before publishing.
+* `STREAMING_DURATION` and `PAUSE_INTERVAL` bound each invocation started by Airflow: every run
+  emits a finite burst of records (default 120 seconds, pausing 10 seconds between sends) and then
+  exits cleanly.
+* `retrieve_user_data` retries the HTTP request a few times before logging a warning and falling back
+  to synthetic user records generated by `_fallback_user_data()`. This means the producer keeps
+  emitting realistic-looking messages even when the upstream API is unreachable, providing a
+  resilient data stream for downstream consumers.
+
+We can run this script directly on our machine (assuming we have Python and confluent-kafka
 installed) or we could dockerize it. If using Airflow, we might instead incorporate this logic in an Airflow
 DAG (using a PythonOperator that runs periodically).
 Using Airflow (Optional): We could create an Airflow DAG that triggers the above code every 5 seconds
@@ -324,8 +335,8 @@ At this point: If you run the producer, you should see logs that data is being s
 open another terminal to consume messages for debugging:
 7# Read messages from the beginning of the topic for debugging (console
 consumer)
-docker exec -it broker kafka-console-consumer \
---bootstrap-server localhost:9092 \
+docker exec -it kafka kafka-console-consumer \
+--bootstrap-server kafka:19092 \
 --topic api_events \
 --from-beginning
 This will print out any messages in the topic (in their raw JSON form). If you see JSON lines appearing
@@ -534,11 +545,11 @@ Cross-Component Handoffs
 Let’s narrate the journey of a single piece of data to reinforce understanding:
 Data generation (Producer) – Suppose a new user signed up on our app, and we call our API or
 get a user object. Our producer code takes this event (user data in JSON) and sends it to Kafka
-topic api_events . Kafka immediately appends this event to one of the partitions of the topic
+topic names_topic . Kafka immediately appends this event to one of the partitions of the topic
 (say partition 1). Now the event is durably stored in Kafka.
 Kafka buffering – The event sits in Kafka. Kafka doesn’t know or care who will read it; it just logs
 it with an offset (e.g., offset 120 in partition 1).
-Spark ingestion – Spark Streaming is subscribed to the api_events topic. Spark periodically
+Spark ingestion – Spark Streaming is subscribed to the names_topic topic. Spark periodically
 checks Kafka for new messages (this happens under the hood when we call .readStream and
 start the query). When our new event is available, Spark will fetch it (along with any other new
 events in that micro-batch window). Spark keeps track of the last offset it read in each partition –

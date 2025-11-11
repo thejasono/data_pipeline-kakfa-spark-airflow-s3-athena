@@ -164,8 +164,29 @@ network, while the `EXTERNAL` listener maps to `localhost:9092` on the host. Aft
 `docker-compose up`, you’ll have a running Kafka service ready to accept connections.</small>
 
 When we run docker-compose up -d , Docker will pull these images and start the containers. We’ll
-have a running Kafka service ready to accept connections.
+have a running Kafka broker ready to accept connections.
 
+In the real project repository, docker-compose.yaml also defines a Spark standalone
+cluster ( spark-master plus spark_worker_1 and spark_worker_2 ) and a
+ dedicated spark_streaming service. The streaming container depends on the
+master, both workers, and Kafka being healthy before it starts. Its command launches
+Spark automatically using spark-submit:
+
+```
+command:
+  - bash
+  - -lc
+  - |
+    /opt/bitnami/spark/bin/spark-submit \
+      --master spark://spark-master:7077 \
+      /opt/spark/app/spark_processing.py
+```
+
+Because the job is baked into the container’s startup, docker-compose up brings
+the Structured Streaming driver online without additional manual steps. The service
+also loads AWS- and Kafka-related environment variables (via env_file entries and
+per-service overrides), so the container picks up credentials, the S3 bucket name,
+and the Kafka bootstrap servers needed to talk to the rest of the stack.
 Tip: To verify Kafka is up, you can use Kafka’s command-line tools inside the container. For example, list
 topics with:
 
@@ -325,136 +346,98 @@ messages.)
 Spark Structured Streaming: Consuming and Processing Data
 Now for the fun part – real-time processing with Apache Spark. We’ll use Spark’s Structured Streaming,
 which allows us to treat streaming data almost like a static DataFrame and use SQL-like operations.
-Spark Setup: In our Docker Compose, we included a Spark service. There are a few ways to do this: -
-Use a single-node Spark (run Spark in local mode). Some Docker images (like bitnami/spark or the
-official Spark image) allow you to run spark-submit or start a Spark shell. - Set up a Spark master
-and worker containers (Spark standalone cluster). Then submit jobs to the cluster. - Use PySpark within
-a container (like running a Python script that uses Spark).
-For simplicity, let’s assume we can invoke Spark from the command line. We might write our Spark
-streaming logic in a Python script (say spark_streaming.py ) and then run it with spark-submit
-inside the Spark container.
-First, we need to ensure Spark can connect to Kafka. This means including the Kafka connector package
-when running Spark. The package coordinates are org.apache.spark:spark-sqlkafka-0-10_2.12:<spark-version> . If using Spark 3.3 or 3.4, we’d match the version. For example,
-if Spark is 3.4.0, we use spark-sql-kafka-0-10_2.12:3.4.0 .
-We also need the Kafka client library (though it often comes with that package). Typically, spark-sqlkafka-0-10 will pull in the Kafka client jars. If not, specify org.apache.kafka:kafka-clients:
-3.3.2 (for example) as well.
-In spark-submit , you can use --packages to add these.
+Spark Setup: docker-compose.yaml provisions a Spark standalone cluster ( spark-master with two
+workers) and a dedicated spark_streaming driver container. The driver image (built from spark/Dockerfile)
+pre-loads the Kafka and S3 connector JARs, mounts our application code, and runs spark-submit automatically once the master, workers, and Kafka report healthy. If you port this demo to another environment you can still submit the same script manually, but in this repository the container handles it.
+Because the connectors are baked into the image, there is no runtime --packages flag to manage. The job can immediately reach the kafka:19092 bootstrap server and write to S3 using the bundled hadoop-aws libraries.
+
 Writing the Spark Streaming Job
 Our Spark job will do the following: 1. Connect to Kafka as a source, reading from the names_topic
-topic. 2. Parse the incoming data (it will come in as bytes; we’ll convert bytes to string, then parse JSON).
-3. Perform any transformation. For demo, maybe select a few fields or add a timestamp. 4. Write the
-data out to a sink – here, Amazon S3. In local mode, we’ll write to a local directory (which could be
-mounted to the container to see results). On AWS, this would be an S3 path (e.g. s3://my-bucket/
-streamed-data/ ). 5. Keep running as a streaming query, outputting continuously.
+topic. 2. Parse the incoming data (it arrives as bytes; we cast to string and parse JSON). 3. Perform the flattening transformations to expose name, location, and contact fields. 4. Write the data out to Amazon S3 using the S3A protocol. 5. Keep running as a streaming query, outputting continuously.
+
 8Let’s outline a PySpark streaming script ( spark_streaming.py ):
+import os
+
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, timestamp_seconds
-from pyspark.sql.types import StructType, StructField, StringType,
-IntegerType
-# 1. Spark session with Kafka support
-spark = SparkSession.builder \
-.appName("KafkaSparkStreamingDemo") \
-.getOrCreate()
-# Optionally, set log level to reduce noise
+from pyspark.sql.functions import col, from_json
+from pyspark.sql.types import (StructField, StructType, StringType,
+                               DoubleType)
+
+
+spark = SparkSession.builder.appName("spark_streaming").getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
-# 2. Define Kafka source DataFrame
-df = spark.readStream.format("kafka") \
-.option("kafka.bootstrap.servers", "kafka:19092") \ # internal listener
-for the Kafka container on our Docker network
-.option("subscribe", "api_events") \
-.option("startingOffsets", "earliest") \ # read all existing
-data first
-.load()
-# The dataframe 'df' has schema: key (binary), value (binary), topic,
-partition, offset, timestamp, etc.
-# We only care about the value (the message body).
-events_df = df.selectExpr("CAST(value AS STRING) as json_str")
-# 3. Define schema of our JSON (for better performance)
-json_schema = StructType([
-StructField("results",
-StructType([
-# results is an array in randomuser, but let's assume 1 result
-StructField("gender", StringType(), True),
-StructField("email", StringType(), True),
-StructField("dob", StructType([StructField("age", IntegerType(),
-True)]), True)
-]), True),
-StructField("info", StructType([StructField("seed", StringType(),
-True)]), True)
+
+brokers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:19092")
+topic = os.environ.get("KAFKA_TOPIC", "names_topic")
+
+bucket = os.environ["S3_BUCKET"]
+output_prefix = os.environ.get("S3_OUTPUT_PREFIX", "names").strip("/")
+checkpoint_prefix = (
+    os.environ.get("S3_CHECKPOINT_PREFIX") or f"checkpoints/{output_prefix}"
+).strip("/")
+
+schema = StructType([
+    StructField("name", StringType(), True),
+    StructField("gender", StringType(), True),
+    StructField("address", StringType(), True),
+    StructField("city", StringType(), True),
+    StructField("nation", StringType(), True),
+    StructField("zip", StringType(), True),
+    StructField("latitude", DoubleType(), True),
+    StructField("longitude", DoubleType(), True),
+    StructField("email", StringType(), True),
 ])
-# Note: RandomUser JSON is nested; for brevity, I'm not capturing all fields,
-just a few.
-# Parse JSON string into a structured DataFrame
-parsed_df = events_df.select(from_json(col("json_str"),
-json_schema).alias("data"))
-# Flatten it a bit:
-flat_df = parsed_df.select(
-9col("data.results.email").alias("email"),
-col("data.results.gender").alias("gender"),
-col("data.results.dob.age").alias("age"),
-col("data.info.seed").alias("batch_id")
+
+streaming_df = (
+    spark.readStream.format("kafka")
+         .option("kafka.bootstrap.servers", brokers)
+         .option("subscribe", topic)
+         .option("startingOffsets", "earliest")
+         .option("failOnDataLoss", "false")
+         .load()
 )
-# 4. (Optional) Add processing time or any transformations
-from pyspark.sql.functions import current_timestamp
-output_df = flat_df.withColumn("processed_at", current_timestamp())
-# 5. Write to S3 (or local dir in our case)
-query = output_df.writeStream \
-.format("parquet") \
-.option("checkpointLocation", "/tmp/spark_checkpoint") \
-.option("path", "/tmp/processed_data") \
-.outputMode("append") \
-.start()
+
+flattened_df = (
+    streaming_df.selectExpr("CAST(value AS STRING) AS json_str")
+               .select(from_json(col("json_str"), schema).alias("data"))
+               .select("data.*")
+)
+
+query = (
+    flattened_df.writeStream
+               .format("json")
+               .outputMode("append")
+               .option("path", f"s3a://{bucket}/{output_prefix}")
+               .option("checkpointLocation", f"s3a://{bucket}/{checkpoint_prefix}")
+               .start()
+)
+
 query.awaitTermination()
+
 Let’s break down what this does in a beginner-friendly way:
-We create a SparkSession. In Structured Streaming, we use the same SparkSession as for batch.
-We use spark.readStream.format("kafka") to set up a streaming source from Kafka. We
-point it to the Kafka service (inside the Spark container we use the internal listener
-`kafka:19092`; from the host we would use `localhost:9092`).
-We subscribe to our topic and set startingOffsets to earliest so we process from the
-beginning of the topic (for demo purposes; in a long-running job, you might use “latest” to only
-get new data).
-The df we get has the raw Kafka message. We cast the value from binary to string to get our
-JSON text. (We ignore the key and other metadata for now.)
-We define a schema for the JSON if we know it. This helps Spark decode the JSON faster and with
-correct types. The Random User API returns a nested JSON, but to keep it simple we pick a few
-fields (like email, gender, age, etc.). If we don’t define schema, we could use Spark’s
-schema_of_json to infer or just select with get_json_object , but explicit schema is
-clearer.
-We use from_json to parse the JSON string into a structured object ( data column), and then
-we extract fields into a flatter DataFrame flat_df . For example, we extract email and age.
-(Note: The path data.results.email is pseudo-code; since “results” is an array in the JSON,
-we might need data.results[0].email . But for brevity assume one result.)
-We add a column processed_at with the current timestamp to mark when we processed that
-event.
-Finally, we write the stream out in append mode to Parquet files. We specify a checkpoint
-location – this is important! Spark uses checkpointing to store the state of the stream (like the
-offsets it has read from Kafka). This ensures fault-tolerance: if the job restarts, it knows where it
-left off and won’t reprocess old data (ensuring exactly-once processing semantics in
-combination with how it writes output).
-The output path /tmp/processed_data in the container is where Parquet files will be written.
-In a real scenario, this would be an S3 URI (e.g. s3://mybucket/stream-output/ ). Actually,
-Spark can directly write to S3 if given an S3 path and proper credentials. For local testing, writing
-•
-•
-•
-•
-•
-•
-•
-•
-10to a mounted folder is fine. We could mount ./data from host to /tmp/processed_data in
-the container to easily see files.
-We call start() to begin the streaming query, and then awaitTermination() so the
-program waits indefinitely while data streams.
+We create a SparkSession (the helper in spark/app/spark_processing.py adds S3
+credentials and endpoint options, but conceptually we end up with the same Spark session).
+We read from Kafka using spark.readStream.format("kafka"). The docker-compose
+configuration advertises Kafka at kafka:19092, and that hostname is the default when
+KAFKA_BOOTSTRAP_SERVERS is not provided.
+We subscribe to the configured topic ( names_topic by default) and keep
+startingOffsets at earliest so that a new deployment can backfill everything currently in
+Kafka before switching to live messages.
+Each Kafka record’s value is JSON. We cast the value to STRING, parse it with from_json,
+and flatten the struct into top-level columns such as name, gender, latitude, and
+longitude. That schema mirrors the flattened payload generated by the producer and matches
+spark/app/spark_processing.py.
+Finally, we sink the stream as newline-delimited JSON files into Amazon S3 by writing to
+S3A paths. The destination bucket ( S3_BUCKET ) and prefixes ( S3_OUTPUT_PREFIX and
+S3_CHECKPOINT_PREFIX ) are required environment variables for the container. Spark’s
+checkpointLocation ensures offsets and progress are tracked between restarts so the job
+can resume without reprocessing old events.
+
 Micro-batch vs Real Streaming: You might wonder, is Spark truly processing one event at a time? In
 Structured Streaming, by default it operates in micro-batches. It will group incoming events into small
 time intervals (the default can be a fraction of a second, or you can configure a trigger, say, 1 second).
 Each micro-batch is like a mini batch job where Spark will read whatever new messages arrived in Kafka,
-process them through the transformations, and write out a batch of Parquet files. This happens
-continuously. To us, it feels like a streaming job (we don’t have to manually run each batch), but under
-the hood Spark is doing a series of small batch jobs quickly. The result is near real-time, and the benefit
-is we can use the rich Spark API (DataFrames, SQL, aggregations, etc.) with minimal changes from batch
-code.
+apply the transformations, and flush out another set of JSON objects to S3. The cadence is fast enough that the pipeline still feels real-time while keeping Spark’s Structured Streaming programming model approachable.
 What is Spark’s micro-batching? In simple terms, Spark Structured Streaming collects
 incoming events for a short, fixed interval (like 1 second or 100ms) and processes them
 together. This is in contrast to processing each event one-by-one. Micro-batching adds a
@@ -463,36 +446,10 @@ efficient and easier to work with using Spark’s existing APIs. From a beginner
 you can mostly write normal Spark code, and Spark takes care of continuously running it
 on new data. The micro-batch interval is usually small enough that you get results almost
 in real time (a second or two delay is often fine for many “real-time” needs).
-Now, how do we run this Spark job? If we have a Spark container, we could use spark-submit . For
-example, if using the Bitnami Spark image, we might do:
-docker exec -it spark-master spark-submit \
---packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0 \
-/opt/spark-apps/spark_streaming.py
-(This assumes our script is available in the container at /opt/spark-apps/spark_streaming.py ,
-possibly via a volume mount or baked into the image. The --packages option pulls in the Kafka
-connector.)
-If done right, Spark will start up, print a bunch of logs, and the streaming query will be running. You’ll
-see log lines for each micro-batch as it reads data from Kafka and writes to files.
-Verifying Spark Output
-We configured the output to Parquet at /tmp/processed_data . If we mounted that to our host (or if
-we exec into the container), we should see files appearing as data flows. They might be in partitioned
-directories by some default (Spark might create a directory structure if we had partition columns; in our
-case we didn’t partition by a column explicitly).
-For example, after a minute of running, listing the output directory might show something like:
-•
-11part-00000-...snappy.parquet
-part-00001-...snappy.parquet
-...
-Each corresponds to one micro-batch’s data. If we open one (using a Parquet viewer or Spark SQL), we’d
-see rows of data with the schema (email, gender, age, batch_id, processed_at).
-For a simpler check, we could also have written to console for debugging:
-# Instead of writing to Parquet, for debugging, do:
-query = output_df.writeStream.outputMode("append").format("console").start()
-This would print each batch of data to stdout. You’d see the rows in the logs. It’s useful to verify things
-are working, but console output isn’t feasible for long-term runs (it’s just for testing).
-Stop the Spark job by pressing Ctrl+C in the terminal where it’s running (if you ran it interactively). In a
-real deployment, Spark jobs might run on a cluster where you’d stop them via Spark’s job control or
-Yarn or AWS EMR interface.
+Because docker-compose.yaml already launches the spark_streaming container, there’s no need to exec into the cluster and run spark-submit manually. The service waits for the Spark master, both workers, and Kafka to be healthy, then runs /opt/spark/app/spark_processing.py as soon as it starts. Restarting the container (or docker compose) is all it takes to redeploy the job.
+To monitor the stream, tail the container logs with docker compose logs -f spark_streaming or open the Spark master UI at http://localhost:8080 to inspect running applications and batch statistics. Each worker exposes its own UI on the mapped ports (8086 and 8087), which is handy for diagnosing skew or resource pressure.
+The sink writes JSON files to Amazon S3 at s3a://$S3_BUCKET/$S3_OUTPUT_PREFIX/. Use aws s3 ls s3://$S3_BUCKET/$S3_OUTPUT_PREFIX/ (or the AWS console) to confirm that new objects appear; every micro-batch produces another object containing the flattened fields from spark_processing.py. Checkpoints are stored alongside the data under S3_CHECKPOINT_PREFIX so Spark can resume from the correct offsets.
+Configuration is driven entirely by environment variables. Provide credentials with AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and optionally AWS_SESSION_TOKEN, or mount ~/.aws and set AWS_PROFILE. Customize endpoints or region settings through S3_ENDPOINT, S3_PATH_STYLE_ACCESS, and S3_REGION when targeting non-AWS object storage. docker-compose.yaml threads these values into spark_streaming so the code can authenticate and reach the bucket without edits.
 We have now built the pipeline locally: data is flowing from the API to Kafka, then from Kafka through
 Spark to storage.
 Let’s talk a bit about how this would translate to a production AWS environment and how we

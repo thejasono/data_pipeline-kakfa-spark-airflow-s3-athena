@@ -201,17 +201,19 @@ without interfering with each other, and at their own pace. Consumers often belo
 consumer groups – a group of consumers that split the load by each one reading different
 partitions of a topic (ensuring each message in the topic is processed by only one consumer in
 the group).
-For our pipeline: - We will create a topic (say, streaming_users or api_events ) that our API data
-will go into. - We might give it a few partitions – for example, 3 partitions to simulate parallelism. (In a
-dev environment with one broker, partitions will still exist logically. In production with multiple brokers,
-partitions would be distributed among brokers.) - Our data ingestion script will be the producer writing
-to this Kafka topic. - Our Spark job will act as the consumer, reading from the Kafka topic.
+For our pipeline: - We rely on a topic called names_topic , which is the default value of the
+KAFKA_TOPIC environment variable used by both the producer and the Spark job. - The producer’s
+ensure_topic helper provisions this topic with a single partition and replication factor of 1 before any
+records are published, so there’s no need for manual setup in local demos. - Our data ingestion script
+will be the producer writing to this Kafka topic. - Our Spark job will act as the consumer, reading from
+the Kafka topic.
 Creating a Kafka Topic
 Kafka doesn’t require manual topic creation – by default, a topic is auto-created when a producer first
 publishes to it (if enabled). However, it’s good practice (and in many setups required) to create topics
 explicitly with the desired number of partitions and replication factor.
-We can create a topic using Kafka’s CLI inside the Kafka container:
-# Create a Kafka topic named "api_events" with 3 partitions and replication
+We can still create a topic manually using Kafka’s CLI inside the Kafka container if we want to inspect the
+settings:
+# Create a Kafka topic named "names_topic" with 1 partition and replication
 factor 1
 docker exec kafka kafka-topics --create \
 --topic api_events \
@@ -247,7 +249,7 @@ source of user data events. Every time you call this API, it returns a JSON with
 (name, email, etc.). In a real scenario, this could be any event source – e.g., an application emitting user
 sign-up events or an IoT device sending sensor readings.
 We’ll write a small producer script that does the following in a loop: 1. Call the API (get a new data
-point). 2. Send the result as a message to the Kafka api_events topic. 3. Wait a short interval (e.g., a
+point). 2. Send the result as a message to the Kafka names_topic topic. 3. Wait a short interval (e.g., a
 few seconds) and repeat.
 This loop will generate a continuous stream of data in Kafka.
 Here’s a simplified Python example using the kafka-python library (or you could use Confluent’s
@@ -269,7 +271,7 @@ except Exception as e:
 time.sleep(5)
 continue
 # 2. Send data to Kafka
-producer.send("api_events", data)
+producer.send("names_topic", data)
 producer.flush() # ensure it's sent
 print("Sent data to Kafka:", data.get("results", [{}])[0].get("email"))
 # example field
@@ -333,7 +335,7 @@ We also need the Kafka client library (though it often comes with that package).
 3.3.2 (for example) as well.
 In spark-submit , you can use --packages to add these.
 Writing the Spark Streaming Job
-Our Spark job will do the following: 1. Connect to Kafka as a source, reading from the api_events
+Our Spark job will do the following: 1. Connect to Kafka as a source, reading from the names_topic
 topic. 2. Parse the incoming data (it will come in as bytes; we’ll convert bytes to string, then parse JSON).
 3. Perform any transformation. For demo, maybe select a few fields or add a timestamp. 4. Write the
 data out to a sink – here, Amazon S3. In local mode, we’ll write to a local directory (which could be
@@ -581,11 +583,11 @@ Cross-Component Handoffs
 Let’s narrate the journey of a single piece of data to reinforce understanding:
 Data generation (Producer) – Suppose a new user signed up on our app, and we call our API or
 get a user object. Our producer code takes this event (user data in JSON) and sends it to Kafka
-topic api_events . Kafka immediately appends this event to one of the partitions of the topic
+topic names_topic . Kafka immediately appends this event to one of the partitions of the topic
 (say partition 1). Now the event is durably stored in Kafka.
 Kafka buffering – The event sits in Kafka. Kafka doesn’t know or care who will read it; it just logs
 it with an offset (e.g., offset 120 in partition 1).
-Spark ingestion – Spark Streaming is subscribed to the api_events topic. Spark periodically
+Spark ingestion – Spark Streaming is subscribed to the names_topic topic. Spark periodically
 checks Kafka for new messages (this happens under the hood when we call .readStream and
 start the query). When our new event is available, Spark will fetch it (along with any other new
 events in that micro-batch window). Spark keeps track of the last offset it read in each partition –

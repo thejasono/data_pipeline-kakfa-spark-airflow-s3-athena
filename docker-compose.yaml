@@ -1,24 +1,17 @@
 
 networks:
+  docker_streaming:
+    driver: bridge
   kafka_network:
     driver: bridge
-  default:
-      name: docker_streaming
-      external: true
-
-volumes:
-  spark_data:
-  kafka_data: {}      # used by kafka:/var/lib/kafka/data
+   # used by kafka:/var/lib/kafka/data
 
 x-airflow-image: &airflow-image custom-airflow:2.9.3-python3.11
 x-airflow-build: &airflow-build
   context: .
   dockerfile: Dockerfile.airflow
 
-x-spark-image: &spark-image custom-spark:3.5.1
-x-spark-build: &spark-build
-  context: ./spark
-  dockerfile: Dockerfile
+
 
 services:
 
@@ -40,6 +33,8 @@ services:
       timeout: 5s
       start_period: 90s
       retries: 10
+    networks:
+      - docker_streaming
 
   # ==========================================================================
   #  APACHE AIRFLOW (Webserver only, LocalExecutor)
@@ -49,7 +44,7 @@ services:
 
   airflow-init:
     image: *airflow-image
-    build: *airflow-build
+    build: *airflow-build             # <-- ONLY HERE
     depends_on:
       airflow_db:
         condition: service_healthy
@@ -67,7 +62,6 @@ services:
       - |
         set -euo pipefail
         airflow db migrate
-        # Create admin user if it doesn't already exist
         airflow users create \
           --role Admin \
           --username "${AIRFLOW_ADMIN_USER:-admin}" \
@@ -80,10 +74,11 @@ services:
       - ./dags:/opt/airflow/dags
       - ./dags/producer:/opt/airflow/dags/producer
       - ./plugins:/opt/airflow/plugins
+    networks:
+      - docker_streaming
 
   airflow_webserver:
-    image: *airflow-image
-    build: *airflow-build
+    image: *airflow-image              # <-- NO build HERE
     depends_on:
       airflow_db:
         condition: service_healthy
@@ -119,10 +114,11 @@ services:
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
     restart: unless-stopped
+    networks:
+      - docker_streaming
 
   airflow_scheduler:
-    image: *airflow-image
-    build: *airflow-build
+    image: *airflow-image              # <-- NO build HERE
     depends_on:
       airflow_db:
         condition: service_healthy
@@ -155,6 +151,9 @@ services:
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
     restart: unless-stopped
+    networks:
+      - docker_streaming
+
 
   #  KAFKA (KRaft Mode) - Single Node (Broker + Controller in one process)
   # ==========================================================================
@@ -188,7 +187,8 @@ services:
       retries: 5
     networks:
       - kafka_network
-      - default
+      - docker_streaming
+
 
   # ============================================================================
   #  KAFKA CONNECT (managed source/sink connectors)
@@ -222,7 +222,7 @@ services:
       - CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1
     networks:
       - kafka_network
-      - default
+      - docker_streaming
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8083/connectors >/dev/null"]
       interval: 30s
@@ -246,7 +246,7 @@ services:
       - SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR=1
     networks:
       - kafka_network
-      - default
+      - docker_streaming
 
   # ============================================================================
   #  KAFKA UI (Provectus)
@@ -269,7 +269,7 @@ services:
       - DYNAMIC_CONFIG_ENABLED=true
     networks:
       - kafka_network
-      - default
+      - docker_streaming
 
   # ============================================================================
   #  APACHE SPARK MASTER (Standalone mode)
@@ -278,8 +278,10 @@ services:
 # SPARK MASTER
 # ----------------------------------------------------------------------------
   spark-master:
-    image: *spark-image
-    build: *spark-build
+    image: &spark-image custom-spark
+    build: &spark-build
+      context: ./spark                 # directory containing Dockerfile above
+      dockerfile: Dockerfile           # or whatever the filename actually is
     container_name: spark-master
     env_file:
       - .env.aws
@@ -295,7 +297,9 @@ services:
     volumes:
       - ./:/home
       - spark_data:/opt/bitnami/spark/data
-    networks: [default, kafka_network]
+    networks:
+      - docker_streaming
+      - kafka_network
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080 | grep -q 'Spark Master'"]
       interval: 10s
@@ -319,7 +323,9 @@ services:
       - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
     ports:
       - "8086:8081"
-    networks: [default, kafka_network]
+    networks:
+      - docker_streaming
+      - kafka_network
 
 # ----------------------------------------------------------------------------
 # SPARK WORKER 2
@@ -338,8 +344,9 @@ services:
       - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
     ports:
       - "8087:8081"
-    networks: [default, kafka_network]
-
+    networks:
+      - docker_streaming
+      - kafka_network
 # ----------------------------------------------------------------------------
 # SPARK STREAMING JOB (driver runs here)
 # ----------------------------------------------------------------------------
@@ -386,4 +393,11 @@ services:
       # environment variables.
       # - ~/.aws:/root/.aws:ro
     restart: unless-stopped
-    networks: [default, kafka_network]
+    networks:
+      - docker_streaming
+      - kafka_network
+
+
+volumes:
+  spark_data:
+  kafka_data: {}  

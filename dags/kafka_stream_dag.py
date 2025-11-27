@@ -13,9 +13,19 @@ from datetime import timedelta
 import pendulum
 
 from airflow import DAG
+from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 
-def _trigger_stream() -> None:
+
+def _get_int_variable(key: str, default: int) -> int:
+    """Fetch an Airflow Variable as int, falling back to the provided default."""
+
+    try:
+        return int(Variable.get(key, default_var=default))
+    except ValueError:
+        return default
+
+def _trigger_stream(topic: str, duration: int, pause: int) -> None:
     """Import and run the Kafka streaming helper at task runtime.
 
     Importing inside the callable keeps the DAG importable even if optional
@@ -26,7 +36,7 @@ def _trigger_stream() -> None:
 
     from producer.kafka_streaming_service import initiate_stream
 
-    initiate_stream()
+    initiate_stream(topic=topic, duration=int(duration), pause=int(pause))
 # Use a timezone-aware start_date (Airflow recommends pendulum).
 LOCAL_TZ = pendulum.timezone("Europe/London")
 DAG_START_DATE = pendulum.datetime(2024, 1, 1, 0, 0, tz=LOCAL_TZ)
@@ -40,6 +50,23 @@ DEFAULT_ARGS = {
 }
 
 # -----------------------------------------------------------------------------
+# Dynamic configuration via Airflow Variables / DAG params
+# -----------------------------------------------------------------------------
+# Adjust these without modifying code:
+# - stream_topic: Kafka topic name for the producer.
+# - stream_duration: How long the producer should run per task execution (seconds).
+# - stream_pause: Sleep interval between sends (seconds).
+# - stream_schedule: Cron string controlling when the DAG runs.
+#
+# Each setting reads an Airflow Variable first (with sensible defaults), then is
+# exposed as a DAG param so you can override values when triggering a run.
+# -----------------------------------------------------------------------------
+STREAM_TOPIC = Variable.get("stream_topic", default_var="names_topic")
+STREAM_DURATION = _get_int_variable("stream_duration", default=120)
+STREAM_PAUSE = _get_int_variable("stream_pause", default=10)
+STREAM_SCHEDULE = Variable.get("stream_schedule", default_var="*/5 * * * *")
+
+# -----------------------------------------------------------------------------
 # DAG DEFINITION
 # -----------------------------------------------------------------------------
 # - dag_id: unique identifier in the Airflow UI
@@ -51,11 +78,32 @@ with DAG(
     dag_id="name_stream_dag",
     description="Stream random names to Kafka topic (short-lived producer job)",
     default_args=DEFAULT_ARGS,
-    schedule="*/5 * * * *",
+    schedule=STREAM_SCHEDULE,
     catchup=False,
     max_active_runs=1,
+    params={
+        "stream_topic": STREAM_TOPIC,
+        "stream_duration": STREAM_DURATION,
+        "stream_pause": STREAM_PAUSE,
+    },
     tags=["kafka", "streaming", "demo"],
 ) as dag:
+
+    dag.doc_md = """
+    ## Kafka name streamer
+
+    Tune these runtime knobs without changing code:
+
+    | Setting | Airflow Variable | Param key | Default |
+    | --- | --- | --- | --- |
+    | Kafka topic | `stream_topic` | `stream_topic` | `names_topic` |
+    | Run duration (s) | `stream_duration` | `stream_duration` | `120` |
+    | Pause between sends (s) | `stream_pause` | `stream_pause` | `10` |
+    | DAG schedule | `stream_schedule` | _N/A_ | `*/5 * * * *` |
+
+    - Update **Variables** in the Airflow UI for persistent overrides (Admin → Variables).
+    - Override **params** when triggering manually to test different values per run.
+    """
 
     # -------------------------------------------------------------------------
     # TASK: Run the Python streaming function.
@@ -65,8 +113,11 @@ with DAG(
     kafka_stream_task = PythonOperator(
         task_id="stream_to_kafka_task",
         python_callable=_trigger_stream,     # imports dependency at execution time
-        # Example of passing arguments:
-        # op_kwargs={"topic": "names_topic", "duration": 120, "pause": 10}
+        op_kwargs={
+            "topic": "{{ params.stream_topic }}",
+            "duration": "{{ params.stream_duration }}",
+            "pause": "{{ params.stream_pause }}",
+        },
     )
 
     # This DAG only has one task, so no dependencies to set (e.g., a >> b).

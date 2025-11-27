@@ -95,6 +95,19 @@ Running the stack in detached mode (`-d`) lets Docker start every container in t
 >
 > That means `docker compose up -d --build` is now enough to demonstrate “API → Kafka → Spark → S3” for your portfolio—no manual `docker exec`, `curl`, or `spark-submit` steps.
 
+#### Tuning the Airflow Kafka stream DAG
+
+The `name_stream_dag` now reads runtime defaults from Airflow **Variables** so you can adjust behaviour without editing the DAG file:
+
+| Airflow Variable | Purpose | Default |
+| --- | --- | --- |
+| `stream_topic` | Kafka topic the producer writes to. | `names_topic` |
+| `stream_duration` | Run time per task execution (seconds). | `120` |
+| `stream_pause` | Sleep interval between sends (seconds). | `10` |
+| `stream_schedule` | Cron string for the DAG schedule. | `*/5 * * * *` |
+
+When manually triggering the DAG you can also override the `stream_topic`, `stream_duration`, and `stream_pause` params per run in the Airflow UI while preserving the saved defaults above.
+
 ### Custom Airflow image & Python dependencies
 
 The Compose file builds a lightweight wrapper image defined in `Dockerfile.airflow` on top of the official `apache/airflow:2.9.3-python3.11` base. During the build we install the pinned contents of `requirements.txt` with the matching Apache Airflow constraints file. That combination gives you:

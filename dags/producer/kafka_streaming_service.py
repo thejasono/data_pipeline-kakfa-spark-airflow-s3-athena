@@ -209,18 +209,18 @@ def publish_once(producer: Producer, topic: str, data: Dict[str, Any]) -> None:
 
 
 # ---------------- Orchestrator ----------------
-def initiate_stream() -> None:
+def initiate_stream(topic: str = KAFKA_TOPIC, duration: int = STREAMING_DURATION, pause: int = PAUSE_INTERVAL) -> None:
     """Run: ensure topic → build producer → loop(fetch→transform→produce) → flush."""
-    ensure_topic(KAFKA_BOOTSTRAP, KAFKA_TOPIC, num_partitions=1, replication_factor=1)
+    ensure_topic(KAFKA_BOOTSTRAP, topic, num_partitions=1, replication_factor=1)
     producer = build_producer(KAFKA_BOOTSTRAP)
 
-    iterations = STREAMING_DURATION // PAUSE_INTERVAL
+    iterations = duration // pause
     try:
         for _ in range(iterations):
             raw = retrieve_user_data()
             payload = transform_user_data(raw)
-            publish_once(producer, KAFKA_TOPIC, payload)
-            time.sleep(PAUSE_INTERVAL)
+            publish_once(producer, topic, payload)
+            time.sleep(pause)
     finally:
         remaining = producer.flush(10)
         if remaining:

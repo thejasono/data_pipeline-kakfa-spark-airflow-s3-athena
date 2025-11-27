@@ -88,6 +88,7 @@ API_ENDPOINT = "https://randomuser.me/api/?results=1"
 KAFKA_TOPIC = "names_topic"
 PAUSE_INTERVAL = 10
 STREAMING_DURATION = 120
+DEFAULT_FLUSH_TIMEOUT = 10
 
 
 # ---------------- Stage 1 — Setup (topic) ----------------
@@ -193,23 +194,61 @@ def build_producer(bootstrap: str) -> Producer:
 def delivery_status(err, msg):
     """Per-message delivery report."""
     if err is not None:
-        print("Delivery failed:", err)
+        LOGGER.warning("Delivery failed: %s", err)
     else:
-        print(f"Delivered to {msg.topic()} [{msg.partition()}] @ offset {msg.offset()}")
+        LOGGER.info("Delivered to %s [%s] @ offset %s", msg.topic(), msg.partition(), msg.offset())
 
 
-def publish_once(producer: Producer, topic: str, data: Dict[str, Any]) -> None:
+def _retryable_kafka_error_codes() -> set[int]:
+    try:
+        from confluent_kafka import KafkaError
+    except ModuleNotFoundError:
+        return set()
+    return {KafkaError.REQUEST_TIMED_OUT, KafkaError._TRANSPORT}
+
+
+def publish_once(producer: Producer, topic: str, data: Dict[str, Any], retry_attempts: int = 2, retry_delay: float = 0.5) -> None:
     """Serialize dict → JSON bytes and enqueue to Kafka."""
-    producer.produce(
-        topic,
-        value=json.dumps(data).encode("utf-8"),
-        on_delivery=delivery_status,
-    )
-    producer.poll(0)  # Drive I/O and callbacks.
+
+    retryable_codes = _retryable_kafka_error_codes()
+    attempts = 0
+    while True:
+        try:
+            producer.produce(
+                topic,
+                value=json.dumps(data).encode("utf-8"),
+                on_delivery=delivery_status,
+            )
+            producer.poll(0)  # Drive I/O and callbacks.
+            return
+        except Exception as exc:  # produce may raise KafkaError or BufferError
+            try:
+                from confluent_kafka import KafkaError
+            except ModuleNotFoundError:
+                KafkaError = None
+
+            if KafkaError is not None and isinstance(exc, KafkaError):
+                error_code = exc.code()
+                if error_code in retryable_codes and attempts < retry_attempts:
+                    attempts += 1
+                    LOGGER.warning(
+                        "Retrying publish to %s after KafkaError code %s (attempt %s/%s)",
+                        topic,
+                        error_code,
+                        attempts,
+                        retry_attempts,
+                    )
+                    time.sleep(retry_delay)
+                    continue
+                LOGGER.exception("Dropping message for topic %s due to KafkaError code %s", topic, error_code)
+                return
+
+            LOGGER.exception("Failed to publish to %s", topic, exc_info=exc)
+            return
 
 
 # ---------------- Orchestrator ----------------
-def initiate_stream() -> None:
+def initiate_stream(flush_timeout: float = DEFAULT_FLUSH_TIMEOUT) -> None:
     """Run: ensure topic → build producer → loop(fetch→transform→produce) → flush."""
     ensure_topic(KAFKA_BOOTSTRAP, KAFKA_TOPIC, num_partitions=1, replication_factor=1)
     producer = build_producer(KAFKA_BOOTSTRAP)
@@ -222,9 +261,13 @@ def initiate_stream() -> None:
             publish_once(producer, KAFKA_TOPIC, payload)
             time.sleep(PAUSE_INTERVAL)
     finally:
-        remaining = producer.flush(10)
-        if remaining:
-            print(f"Flush timed out with {remaining} message(s) still in queue.")
+        try:
+            remaining = producer.flush(flush_timeout)
+        except Exception as exc:
+            LOGGER.exception("Flush failed after waiting %s seconds", flush_timeout, exc_info=exc)
+        else:
+            if remaining:
+                LOGGER.warning("Flush timed out with %s message(s) still in queue.", remaining)
 
 
 if __name__ == "__main__":

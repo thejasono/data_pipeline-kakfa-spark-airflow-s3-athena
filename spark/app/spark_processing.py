@@ -206,9 +206,9 @@ def s3_healthcheck_write(spark: SparkSession, path: str) -> None:
 
 
 def initiate_streaming_to_bucket(df: DataFrame, path: str, checkpoint_location: str) -> None:
-    """Start JSON streaming sink with checkpointing and per-batch logging."""
+    """Start JSON streaming sink with checkpointing and per-batch logging (finite run)."""
     logger.info(
-        "Starting streaming sink (JSON) to path=%s with checkpoint=%s",
+        "Starting streaming sink (JSON, availableNow) to path=%s with checkpoint=%s",
         path,
         checkpoint_location,
     )
@@ -245,11 +245,14 @@ def initiate_streaming_to_bucket(df: DataFrame, path: str, checkpoint_location: 
         .outputMode("append")
         .foreachBatch(_write_batch)
         .option("checkpointLocation", checkpoint_location)
+        .trigger(availableNow=True)  # <- key change
         .start()
     )
 
-    logger.info("Streaming query started; awaiting termination.")
+    logger.info("Streaming query (availableNow) started; waiting for backlog to be processed.")
     query.awaitTermination()
+    logger.info("Streaming query (availableNow) completed and terminated.")
+
 
 
 def main() -> None:

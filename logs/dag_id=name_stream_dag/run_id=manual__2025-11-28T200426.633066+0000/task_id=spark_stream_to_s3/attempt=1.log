@@ -1,0 +1,64 @@
+[2025-11-28T20:07:05.785+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2025-11-28T20:07:06.216+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: name_stream_dag.spark_stream_to_s3 manual__2025-11-28T20:04:26.633066+00:00 [queued]>
+[2025-11-28T20:07:06.249+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: name_stream_dag.spark_stream_to_s3 manual__2025-11-28T20:04:26.633066+00:00 [queued]>
+[2025-11-28T20:07:06.250+0000] {taskinstance.py:2306} INFO - Starting attempt 1 of 2
+[2025-11-28T20:07:06.353+0000] {taskinstance.py:2330} INFO - Executing <Task(DockerOperator): spark_stream_to_s3> on 2025-11-28 20:04:26.633066+00:00
+[2025-11-28T20:07:06.385+0000] {standard_task_runner.py:64} INFO - Started process 197 to run task
+[2025-11-28T20:07:06.396+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'name_stream_dag', 'spark_stream_to_s3', 'manual__2025-11-28T20:04:26.633066+00:00', '--job-id', '266', '--raw', '--subdir', 'DAGS_FOLDER/kafka_stream_dag.py', '--cfg-path', '/tmp/tmpw9wxxyqu']
+[2025-11-28T20:07:06.402+0000] {standard_task_runner.py:91} INFO - Job 266: Subtask spark_stream_to_s3
+[2025-11-28T20:07:07.555+0000] {task_command.py:426} INFO - Running <TaskInstance: name_stream_dag.spark_stream_to_s3 manual__2025-11-28T20:04:26.633066+00:00 [running]> on host 78a1caa176c5
+[2025-11-28T20:07:09.169+0000] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='name_stream_dag' AIRFLOW_CTX_TASK_ID='spark_stream_to_s3' AIRFLOW_CTX_EXECUTION_DATE='2025-11-28T20:04:26.633066+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2025-11-28T20:04:26.633066+00:00'
+[2025-11-28T20:07:09.172+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2025-11-28T20:07:09.630+0000] {docker.py:367} INFO - Starting docker container from image custom-spark
+[2025-11-28T20:07:12.323+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:07:12.30 [0m[38;5;2mINFO [0m ==>
+[2025-11-28T20:07:12.325+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:07:12.32 [0m[38;5;2mINFO [0m ==> [1mWelcome to the Bitnami spark container[0m
+[2025-11-28T20:07:12.340+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:07:12.33 [0m[38;5;2mINFO [0m ==> Subscribe to project updates by watching [1mhttps://github.com/bitnami/containers[0m
+[2025-11-28T20:07:12.343+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:07:12.34 [0m[38;5;2mINFO [0m ==> Submit issues and feature requests at [1mhttps://github.com/bitnami/containers/issues[0m
+[2025-11-28T20:07:12.351+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:07:12.34 [0m[38;5;2mINFO [0m ==> Upgrade to Tanzu Application Catalog for production environments to access custom-configured and pre-packaged software components. Gain enhanced features, including Software Bill of Materials (SBOM), CVE scan result reports, and VEX documents. To learn more, visit [1mhttps://bitnami.com/enterprise[0m
+[2025-11-28T20:07:12.359+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:07:12.35 [0m[38;5;2mINFO [0m ==>
+[2025-11-28T20:07:12.425+0000] {docker.py:438} INFO - 
+[2025-11-28T20:07:24.482+0000] {docker.py:438} INFO - 2025-11-28 20:07:24,479:spark_structured_streaming:main:INFO:Spark streaming config: app_name=spark_streaming brokers=kafka:19092 topic=names_topic bucket=namegeneratorbucket output_prefix=names checkpoint_prefix=checkpoints/names region=eu-west-2 endpoint=None path_style=None ssl_enabled=None
+[2025-11-28T20:07:24.674+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO SparkContext: Running Spark version 3.5.1
+[2025-11-28T20:07:24.683+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO SparkContext: OS info Linux, 6.6.87.2-microsoft-standard-WSL2, amd64
+[2025-11-28T20:07:24.684+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO SparkContext: Java version 17.0.12
+[2025-11-28T20:07:24.785+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO ResourceUtils: ==============================================================
+[2025-11-28T20:07:24.791+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO ResourceUtils: No custom resources configured for spark.driver.
+[2025-11-28T20:07:24.794+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO ResourceUtils: ==============================================================
+[2025-11-28T20:07:24.796+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO SparkContext: Submitted application: spark_streaming
+[2025-11-28T20:07:24.876+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO ResourceProfile: Default ResourceProfile created, executor resources: Map(memory -> name: memory, amount: 1024, script: , vendor: , offHeap -> name: offHeap, amount: 0, script: , vendor: ), task resources: Map(cpus -> name: cpus, amount: 1.0)
+[2025-11-28T20:07:24.920+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO ResourceProfile: Limiting resource is cpu
+[2025-11-28T20:07:24.927+0000] {docker.py:438} INFO - 25/11/28 20:07:24 INFO ResourceProfileManager: Added ResourceProfile id: 0
+[2025-11-28T20:07:25.123+0000] {docker.py:438} INFO - 25/11/28 20:07:25 INFO SecurityManager: Changing view acls to: spark
+[2025-11-28T20:07:25.129+0000] {docker.py:438} INFO - 25/11/28 20:07:25 INFO SecurityManager: Changing modify acls to: spark
+[2025-11-28T20:07:25.135+0000] {docker.py:438} INFO - 25/11/28 20:07:25 INFO SecurityManager: Changing view acls groups to: 
+[2025-11-28T20:07:25.143+0000] {docker.py:438} INFO - 25/11/28 20:07:25 INFO SecurityManager: Changing modify acls groups to: 
+[2025-11-28T20:07:25.146+0000] {docker.py:438} INFO - 25/11/28 20:07:25 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: spark; groups with view permissions: EMPTY; users with modify permissions: spark; groups with modify permissions: EMPTY
+[2025-11-28T20:07:25.321+0000] {docker.py:438} INFO - 25/11/28 20:07:25 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+[2025-11-28T20:07:26.825+0000] {docker.py:438} INFO - 25/11/28 20:07:26 INFO Utils: Successfully started service 'sparkDriver' on port 46133.
+[2025-11-28T20:07:27.079+0000] {docker.py:438} INFO - 25/11/28 20:07:27 INFO SparkEnv: Registering MapOutputTracker
+[2025-11-28T20:07:27.295+0000] {docker.py:438} INFO - 25/11/28 20:07:27 INFO SparkEnv: Registering BlockManagerMaster
+[2025-11-28T20:07:27.361+0000] {docker.py:438} INFO - 25/11/28 20:07:27 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+[2025-11-28T20:07:27.369+0000] {docker.py:438} INFO - 25/11/28 20:07:27 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+[2025-11-28T20:07:27.386+0000] {docker.py:438} INFO - 25/11/28 20:07:27 INFO SparkEnv: Registering BlockManagerMasterHeartbeat
+[2025-11-28T20:07:27.564+0000] {docker.py:438} INFO - 25/11/28 20:07:27 INFO DiskBlockManager: Created local directory at /tmp/blockmgr-116a47d4-9c41-4cc0-ad12-238e14010f14
+[2025-11-28T20:07:27.778+0000] {docker.py:438} INFO - 25/11/28 20:07:27 INFO MemoryStore: MemoryStore started with capacity 434.4 MiB
+[2025-11-28T20:07:27.872+0000] {docker.py:438} INFO - 25/11/28 20:07:27 INFO SparkEnv: Registering OutputCommitCoordinator
+[2025-11-28T20:07:28.389+0000] {docker.py:438} INFO - 25/11/28 20:07:28 INFO JettyUtils: Start Jetty 0.0.0.0:4040 for SparkUI
+[2025-11-28T20:07:28.665+0000] {docker.py:438} INFO - 25/11/28 20:07:28 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+[2025-11-28T20:07:29.218+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO StandaloneAppClient$ClientEndpoint: Connecting to master spark://spark-master:7077...
+[2025-11-28T20:07:29.354+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO TransportClientFactory: Successfully created connection to spark-master/172.18.0.3:7077 after 76 ms (0 ms spent in bootstraps)
+[2025-11-28T20:07:29.673+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO StandaloneSchedulerBackend: Connected to Spark cluster with app ID app-20251128200729-0003
+[2025-11-28T20:07:29.720+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 41979.
+[2025-11-28T20:07:29.722+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO NettyBlockTransferService: Server created on 4d0307d71d88:41979
+[2025-11-28T20:07:29.724+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+[2025-11-28T20:07:29.743+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, 4d0307d71d88, 41979, None)
+[2025-11-28T20:07:29.770+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO BlockManagerMasterEndpoint: Registering block manager 4d0307d71d88:41979 with 434.4 MiB RAM, BlockManagerId(driver, 4d0307d71d88, 41979, None)
+[2025-11-28T20:07:29.779+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, 4d0307d71d88, 41979, None)
+[2025-11-28T20:07:29.782+0000] {docker.py:438} INFO - 25/11/28 20:07:29 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, 4d0307d71d88, 41979, None)
+[2025-11-28T20:07:30.457+0000] {docker.py:438} INFO - 25/11/28 20:07:30 INFO StandaloneSchedulerBackend: SchedulerBackend is ready for scheduling beginning after reached minRegisteredResourcesRatio: 0.0
+[2025-11-28T20:07:31.041+0000] {docker.py:438} INFO - 2025-11-28 20:07:31,038:spark_structured_streaming:s3_healthcheck_write:INFO:Running S3 healthcheck write to s3a://namegeneratorbucket/names/_healthcheck/2025-11-28T20-07-31Z
+[2025-11-28T20:11:59.370+0000] {local_task_job_runner.py:124} ERROR - Received SIGTERM. Terminating subprocesses
+[2025-11-28T20:11:59.581+0000] {process_utils.py:132} INFO - Sending 15 to group 197. PIDs of all processes in the group: [197]
+[2025-11-28T20:11:59.647+0000] {process_utils.py:87} INFO - Sending the signal 15 to group 197
+[2025-11-28T20:12:00.959+0000] {taskinstance.py:2611} ERROR - Received SIGTERM. Terminating subprocesses.
+[2025-11-28T20:12:00.986+0000] {docker.py:533} INFO - Stopping docker container

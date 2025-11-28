@@ -2,22 +2,25 @@ import logging
 import os
 from typing import Optional, Tuple
 from urllib.parse import urlparse
-from datetime import datetime, timezone  # <-- add this
+from datetime import datetime, timezone
+
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s:%(name)s:%(funcName)s:%(levelname)s:%(message)s"
+    format="%(asctime)s:%(name)s:%(funcName)s:%(levelname)s:%(message)s",
 )
 logger = logging.getLogger("spark_structured_streaming")
 
 
-def _configure_s3_credentials(builder: SparkSession.Builder,
-                              access_key: str,
-                              secret_key: str,
-                              session_token: Optional[str] = None) -> SparkSession.Builder:
+def _configure_s3_credentials(
+    builder: SparkSession.Builder,
+    access_key: str,
+    secret_key: str,
+    session_token: Optional[str] = None,
+) -> SparkSession.Builder:
     """Apply static AWS credentials to a Spark builder."""
     provider = "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider"
     if session_token:
@@ -37,7 +40,13 @@ def _configure_s3_credentials(builder: SparkSession.Builder,
 
 
 def _normalize_s3_endpoint(raw: Optional[str]) -> Tuple[str, Optional[bool]]:
-    """Split an S3 endpoint into host[:port] and SSL preference."""
+    """Split an S3 endpoint into host[:port] and SSL preference.
+
+    Examples:
+    - 's3.eu-west-2.amazonaws.com'     -> ('s3.eu-west-2.amazonaws.com', None)
+    - 'http://minio:9000'              -> ('minio:9000', False)
+    - 'https://s3.eu-west-2.amazonaws.com' -> ('s3.eu-west-2.amazonaws.com', True)
+    """
     if raw is None:
         raise ValueError("S3 endpoint is required when normalization is requested")
 
@@ -45,6 +54,7 @@ def _normalize_s3_endpoint(raw: Optional[str]) -> Tuple[str, Optional[bool]]:
     if not value:
         raise ValueError("S3 endpoint cannot be empty or whitespace")
 
+    # No scheme → treat as host[:port]
     if "://" not in value:
         if any(ch in value for ch in "/?#"):
             raise ValueError("S3 endpoint without scheme must not contain paths or queries")
@@ -65,15 +75,17 @@ def _normalize_s3_endpoint(raw: Optional[str]) -> Tuple[str, Optional[bool]]:
     return host, ssl_enabled
 
 
-def initialize_spark_session(app_name: str,
-                             *,
-                             region: str,
-                             access_key: Optional[str] = None,
-                             secret_key: Optional[str] = None,
-                             session_token: Optional[str] = None,
-                             endpoint: Optional[str] = None,
-                             path_style: Optional[bool] = None,
-                             ssl_enabled: Optional[bool] = None) -> SparkSession:
+def initialize_spark_session(
+    app_name: str,
+    *,
+    region: str,
+    access_key: Optional[str] = None,
+    secret_key: Optional[str] = None,
+    session_token: Optional[str] = None,
+    endpoint: Optional[str] = None,
+    path_style: Optional[bool] = None,
+    ssl_enabled: Optional[bool] = None,
+) -> SparkSession:
     """Create a SparkSession with optional static AWS credentials."""
     builder = SparkSession.builder.appName(app_name)
 
@@ -90,6 +102,7 @@ def initialize_spark_session(app_name: str,
     if endpoint:
         builder = builder.config("spark.hadoop.fs.s3a.endpoint", endpoint)
 
+        # Default path-style for non-AWS endpoints (e.g. MinIO)
         if path_style is None:
             path_style = "amazonaws.com" not in endpoint.lower()
 
@@ -116,7 +129,6 @@ def initialize_spark_session(app_name: str,
 
 def get_streaming_dataframe(spark: SparkSession, brokers: str, topic: str) -> DataFrame:
     """Define a Kafka streaming DataFrame (unbounded table)."""
-    # Prefer fail-fast: let caller handle exceptions.
     return (
         spark.readStream
         .format("kafka")
@@ -128,41 +140,102 @@ def get_streaming_dataframe(spark: SparkSession, brokers: str, topic: str) -> Da
     )
 
 
-def transform_streaming_data(df):
+def transform_streaming_data(df: DataFrame) -> DataFrame:
     """Cast Kafka value→STRING, parse JSON to typed columns."""
-    schema = StructType([
-        StructField("name", StringType(), True),
-        StructField("gender", StringType(), True),
-        StructField("address", StringType(), True),
-        StructField("city", StringType(), True),
-        StructField("nation", StringType(), True),
-        StructField("zip", StringType(), True),  # keep as STRING
-        StructField("latitude", DoubleType(), True),
-        StructField("longitude", DoubleType(), True),
-        StructField("email", StringType(), True),
-    ])
+    schema = StructType(
+        [
+            StructField("name", StringType(), True),
+            StructField("gender", StringType(), True),
+            StructField("address", StringType(), True),
+            StructField("city", StringType(), True),
+            StructField("nation", StringType(), True),
+            StructField("zip", StringType(), True),  # keep as STRING
+            StructField("latitude", DoubleType(), True),
+            StructField("longitude", DoubleType(), True),
+            StructField("email", StringType(), True),
+        ]
+    )
     return (
         df.selectExpr("CAST(value AS STRING) AS json_str")
-          .select(from_json(col("json_str"), schema).alias("data"))
-          .select("data.*")
+        .select(from_json(col("json_str"), schema).alias("data"))
+        .select("data.*")
     )
 
 
-def initiate_streaming_to_bucket(df, path: str, checkpoint_location: str):
-    """Start JSON streaming sink with checkpointing and block."""
-    logger.info("Starting streaming sink (JSON)...")
+def s3_healthcheck_write(spark: SparkSession, path: str) -> None:
+    """Perform a small test write to S3A to confirm credentials/endpoint work.
+
+    Writes a single-row JSON file under:
+    {path}/_healthcheck/{timestamp}/part-...json
+    """
+    # Example: 2025-11-28T19-52-30Z
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+    health_path = f"{path.rstrip('/')}/_healthcheck/{ts}"
+
+    logger.info("Running S3 healthcheck write to %s", health_path)
+
+    try:
+        df = spark.createDataFrame([(ts,)], ["healthcheck_timestamp"])
+        (
+            df.write
+            .mode("append")
+            .format("json")
+            .save(health_path)
+        )
+        logger.info("S3 healthcheck write succeeded at %s", health_path)
+    except Exception:
+        logger.exception("S3 healthcheck write FAILED at %s", health_path)
+        raise
+
+
+def initiate_streaming_to_bucket(df: DataFrame, path: str, checkpoint_location: str) -> None:
+    """Start JSON streaming sink with checkpointing and per-batch logging."""
+    logger.info(
+        "Starting streaming sink (JSON) to path=%s with checkpoint=%s",
+        path,
+        checkpoint_location,
+    )
+
+    def _write_batch(batch_df: DataFrame, batch_id: int) -> None:
+        count = batch_df.count()
+        ts = datetime.now(timezone.utc).isoformat()
+
+        logger.info(
+            "Batch %s: about to write %s record(s) to %s at %s",
+            batch_id,
+            count,
+            path,
+            ts,
+        )
+
+        (
+            batch_df.write
+            .mode("append")
+            .format("json")
+            .save(path)
+        )
+
+        logger.info(
+            "Batch %s: successfully wrote %s record(s) to %s at %s",
+            batch_id,
+            count,
+            path,
+            ts,
+        )
+
     query = (
         df.writeStream
-          .format("json")
-          .outputMode("append")
-          .option("path", path)
-          .option("checkpointLocation", checkpoint_location)
-          .start()
+        .outputMode("append")
+        .foreachBatch(_write_batch)
+        .option("checkpointLocation", checkpoint_location)
+        .start()
     )
+
+    logger.info("Streaming query started; awaiting termination.")
     query.awaitTermination()
 
 
-def main():
+def main() -> None:
     """End-to-end: Spark init → Kafka read → JSON parse → JSON sink (AWS S3)."""
     app_name = "spark_streaming"
 
@@ -174,7 +247,10 @@ def main():
         raise RuntimeError("S3_BUCKET is required")
 
     output_prefix = os.environ.get("S3_OUTPUT_PREFIX", "names").strip("/")
-    checkpoint_prefix = (os.environ.get("S3_CHECKPOINT_PREFIX") or f"checkpoints/{output_prefix}").strip("/")
+    checkpoint_prefix = (
+        os.environ.get("S3_CHECKPOINT_PREFIX") or f"checkpoints/{output_prefix}"
+    ).strip("/")
+
     path = f"s3a://{bucket}/{output_prefix}"
     checkpoint_location = f"s3a://{bucket}/{checkpoint_prefix}"
 
@@ -183,7 +259,6 @@ def main():
     access_key = os.environ.get("AWS_ACCESS_KEY_ID")
     secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
     session_token = os.environ.get("AWS_SESSION_TOKEN")
-
 
     endpoint_host = None
     ssl_pref = None
@@ -195,6 +270,22 @@ def main():
     path_style = None
     if path_style_env is not None:
         path_style = path_style_env.lower() in {"1", "true", "yes", "on"}
+
+    logger.info(
+        "Spark streaming config: app_name=%s brokers=%s topic=%s bucket=%s "
+        "output_prefix=%s checkpoint_prefix=%s region=%s endpoint=%s "
+        "path_style=%s ssl_enabled=%s",
+        app_name,
+        brokers,
+        topic,
+        bucket,
+        output_prefix,
+        checkpoint_prefix,
+        s3_region,
+        endpoint_host,
+        path_style,
+        ssl_pref,
+    )
 
     spark = initialize_spark_session(
         app_name,
@@ -208,10 +299,14 @@ def main():
     )
 
     try:
+        # Optional explicit S3 connectivity check (can be removed if undesired)
+        s3_healthcheck_write(spark, path)
+
         df = get_streaming_dataframe(spark, brokers, topic)
         transformed_df = transform_streaming_data(df)
         initiate_streaming_to_bucket(transformed_df, path, checkpoint_location)
     finally:
+        logger.info("Stopping Spark session.")
         spark.stop()
 
 

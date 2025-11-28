@@ -1,0 +1,138 @@
+[2025-11-28T21:40:35.271+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2025-11-28T21:40:35.424+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: name_stream_dag.spark_stream_to_s3 scheduled__2025-11-28T21:30:00+00:00 [queued]>
+[2025-11-28T21:40:35.467+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: name_stream_dag.spark_stream_to_s3 scheduled__2025-11-28T21:30:00+00:00 [queued]>
+[2025-11-28T21:40:35.468+0000] {taskinstance.py:2306} INFO - Starting attempt 1 of 2
+[2025-11-28T21:40:35.548+0000] {taskinstance.py:2330} INFO - Executing <Task(DockerOperator): spark_stream_to_s3> on 2025-11-28 21:30:00+00:00
+[2025-11-28T21:40:35.570+0000] {standard_task_runner.py:64} INFO - Started process 207 to run task
+[2025-11-28T21:40:35.580+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'name_stream_dag', 'spark_stream_to_s3', 'scheduled__2025-11-28T21:30:00+00:00', '--job-id', '359', '--raw', '--subdir', 'DAGS_FOLDER/kafka_stream_dag.py', '--cfg-path', '/tmp/tmpp59bbf90']
+[2025-11-28T21:40:35.588+0000] {standard_task_runner.py:91} INFO - Job 359: Subtask spark_stream_to_s3
+[2025-11-28T21:40:36.127+0000] {task_command.py:426} INFO - Running <TaskInstance: name_stream_dag.spark_stream_to_s3 scheduled__2025-11-28T21:30:00+00:00 [running]> on host aef0c793a450
+[2025-11-28T21:40:37.099+0000] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='name_stream_dag' AIRFLOW_CTX_TASK_ID='spark_stream_to_s3' AIRFLOW_CTX_EXECUTION_DATE='2025-11-28T21:30:00+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2025-11-28T21:30:00+00:00'
+[2025-11-28T21:40:37.103+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2025-11-28T21:40:37.438+0000] {docker.py:367} INFO - Starting docker container from image custom-spark
+[2025-11-28T21:40:39.074+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m21:40:39.03 [0m[38;5;2mINFO [0m ==>
+[2025-11-28T21:40:39.080+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m21:40:39.04 [0m[38;5;2mINFO [0m ==> [1mWelcome to the Bitnami spark container[0m
+[2025-11-28T21:40:39.083+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m21:40:39.05 [0m[38;5;2mINFO [0m ==> Subscribe to project updates by watching [1mhttps://github.com/bitnami/containers[0m
+[2025-11-28T21:40:39.085+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m21:40:39.05 [0m[38;5;2mINFO [0m ==> Submit issues and feature requests at [1mhttps://github.com/bitnami/containers/issues[0m
+[2025-11-28T21:40:39.086+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m21:40:39.06 [0m[38;5;2mINFO [0m ==> Upgrade to Tanzu Application Catalog for production environments to access custom-configured and pre-packaged software components. Gain enhanced features, including Software Bill of Materials (SBOM), CVE scan result reports, and VEX documents. To learn more, visit [1mhttps://bitnami.com/enterprise[0m
+[2025-11-28T21:40:39.087+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m21:40:39.07 [0m[38;5;2mINFO [0m ==>
+[2025-11-28T21:40:39.144+0000] {docker.py:438} INFO - 
+[2025-11-28T21:40:49.388+0000] {docker.py:438} INFO - 2025-11-28 21:40:49,383:spark_structured_streaming:main:INFO:Spark streaming config: app_name=spark_streaming brokers=kafka:19092 topic=names_topic bucket=namegeneratorbucket output_prefix=names checkpoint_prefix=checkpoints/names region=eu-west-2 endpoint=None path_style=None ssl_enabled=None
+[2025-11-28T21:40:49.923+0000] {docker.py:438} INFO - 25/11/28 21:40:49 INFO SparkContext: Running Spark version 3.5.1
+[2025-11-28T21:40:49.939+0000] {docker.py:438} INFO - 25/11/28 21:40:49 INFO SparkContext: OS info Linux, 6.6.87.2-microsoft-standard-WSL2, amd64
+[2025-11-28T21:40:49.947+0000] {docker.py:438} INFO - 25/11/28 21:40:49 INFO SparkContext: Java version 17.0.12
+[2025-11-28T21:40:50.093+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO ResourceUtils: ==============================================================
+[2025-11-28T21:40:50.095+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO ResourceUtils: No custom resources configured for spark.driver.
+[2025-11-28T21:40:50.099+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO ResourceUtils: ==============================================================
+[2025-11-28T21:40:50.101+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO SparkContext: Submitted application: spark_streaming
+[2025-11-28T21:40:50.219+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO ResourceProfile: Default ResourceProfile created, executor resources: Map(memory -> name: memory, amount: 1024, script: , vendor: , offHeap -> name: offHeap, amount: 0, script: , vendor: ), task resources: Map(cpus -> name: cpus, amount: 1.0)
+[2025-11-28T21:40:50.279+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO ResourceProfile: Limiting resource is cpu
+[2025-11-28T21:40:50.284+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO ResourceProfileManager: Added ResourceProfile id: 0
+[2025-11-28T21:40:50.685+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO SecurityManager: Changing view acls to: spark
+[2025-11-28T21:40:50.696+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO SecurityManager: Changing modify acls to: spark
+[2025-11-28T21:40:50.699+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO SecurityManager: Changing view acls groups to:
+[2025-11-28T21:40:50.716+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO SecurityManager: Changing modify acls groups to:
+[2025-11-28T21:40:50.719+0000] {docker.py:438} INFO - 25/11/28 21:40:50 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: spark; groups with view permissions: EMPTY; users with modify permissions: spark; groups with modify permissions: EMPTY
+[2025-11-28T21:40:50.938+0000] {docker.py:438} INFO - 25/11/28 21:40:50 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+[2025-11-28T21:40:52.825+0000] {docker.py:438} INFO - 25/11/28 21:40:52 INFO Utils: Successfully started service 'sparkDriver' on port 38941.
+[2025-11-28T21:40:53.039+0000] {docker.py:438} INFO - 25/11/28 21:40:53 INFO SparkEnv: Registering MapOutputTracker
+[2025-11-28T21:40:53.244+0000] {docker.py:438} INFO - 25/11/28 21:40:53 INFO SparkEnv: Registering BlockManagerMaster
+[2025-11-28T21:40:53.328+0000] {docker.py:438} INFO - 25/11/28 21:40:53 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+[2025-11-28T21:40:53.336+0000] {docker.py:438} INFO - 25/11/28 21:40:53 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+[2025-11-28T21:40:53.393+0000] {docker.py:438} INFO - 25/11/28 21:40:53 INFO SparkEnv: Registering BlockManagerMasterHeartbeat
+[2025-11-28T21:40:53.720+0000] {docker.py:438} INFO - 25/11/28 21:40:53 INFO DiskBlockManager: Created local directory at /tmp/blockmgr-f1ff1f95-8540-4bc5-9b96-8282cdb7cdb2
+[2025-11-28T21:40:53.883+0000] {docker.py:438} INFO - 25/11/28 21:40:53 INFO MemoryStore: MemoryStore started with capacity 434.4 MiB
+[2025-11-28T21:40:53.993+0000] {docker.py:438} INFO - 25/11/28 21:40:53 INFO SparkEnv: Registering OutputCommitCoordinator
+[2025-11-28T21:40:54.555+0000] {docker.py:438} INFO - 25/11/28 21:40:54 INFO JettyUtils: Start Jetty 0.0.0.0:4040 for SparkUI
+[2025-11-28T21:40:54.765+0000] {docker.py:438} INFO - 25/11/28 21:40:54 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+[2025-11-28T21:40:55.508+0000] {docker.py:438} INFO - 25/11/28 21:40:55 INFO StandaloneAppClient$ClientEndpoint: Connecting to master spark://spark-master:7077...
+[2025-11-28T21:40:55.819+0000] {docker.py:438} INFO - 25/11/28 21:40:55 INFO TransportClientFactory: Successfully created connection to spark-master/172.18.0.4:7077 after 180 ms (0 ms spent in bootstraps)
+[2025-11-28T21:40:56.258+0000] {docker.py:438} INFO - 25/11/28 21:40:56 INFO StandaloneSchedulerBackend: Connected to Spark cluster with app ID app-20251128214056-0009
+[2025-11-28T21:40:56.333+0000] {docker.py:438} INFO - 25/11/28 21:40:56 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 43033.
+[2025-11-28T21:40:56.340+0000] {docker.py:438} INFO - 25/11/28 21:40:56 INFO NettyBlockTransferService: Server created on 6aa95cf4328f:43033
+[2025-11-28T21:40:56.342+0000] {docker.py:438} INFO - 25/11/28 21:40:56 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+[2025-11-28T21:40:56.374+0000] {docker.py:438} INFO - 25/11/28 21:40:56 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, 6aa95cf4328f, 43033, None)
+[2025-11-28T21:40:56.391+0000] {docker.py:438} INFO - 25/11/28 21:40:56 INFO BlockManagerMasterEndpoint: Registering block manager 6aa95cf4328f:43033 with 434.4 MiB RAM, BlockManagerId(driver, 6aa95cf4328f, 43033, None)
+[2025-11-28T21:40:56.397+0000] {docker.py:438} INFO - 25/11/28 21:40:56 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, 6aa95cf4328f, 43033, None)
+[2025-11-28T21:40:56.407+0000] {docker.py:438} INFO - 25/11/28 21:40:56 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, 6aa95cf4328f, 43033, None)
+[2025-11-28T21:40:57.496+0000] {docker.py:438} INFO - 25/11/28 21:40:57 INFO StandaloneSchedulerBackend: SchedulerBackend is ready for scheduling beginning after reached minRegisteredResourcesRatio: 0.0
+[2025-11-28T21:40:58.566+0000] {docker.py:438} INFO - 2025-11-28 21:40:58,554:spark_structured_streaming:s3_healthcheck_write:INFO:Running S3 healthcheck, writing marker to s3a://namegeneratorbucket/names/healthcheck/_SUCCESS
+[2025-11-28T21:41:05.398+0000] {docker.py:438} INFO - 2025-11-28 21:41:05,390:spark_structured_streaming:s3_healthcheck_write:INFO:S3 healthcheck marker successfully written at s3a://namegeneratorbucket/names/healthcheck/_SUCCESS
+[2025-11-28T21:41:12.958+0000] {docker.py:438} INFO - 2025-11-28 21:41:12,951:spark_structured_streaming:initiate_streaming_to_bucket:INFO:Starting streaming sink (JSON, availableNow) to path=s3a://namegeneratorbucket/names with checkpoint=s3a://namegeneratorbucket/checkpoints/names
+[2025-11-28T21:41:13.062+0000] {docker.py:438} INFO - 2025-11-28 21:41:13,048:py4j.java_gateway:run:INFO:Callback Server Starting
+[2025-11-28T21:41:13.067+0000] {docker.py:438} INFO - 2025-11-28 21:41:13,050:py4j.java_gateway:run:INFO:Socket listening on ('127.0.0.1', 40335)
+[2025-11-28T21:41:15.318+0000] {docker.py:438} INFO - 2025-11-28 21:41:15,313:spark_structured_streaming:initiate_streaming_to_bucket:INFO:Streaming query (availableNow) started; waiting for backlog to be processed.
+[2025-11-28T21:41:23.997+0000] {docker.py:438} INFO - 2025-11-28 21:41:23,984:py4j.clientserver:wait_for_commands:INFO:Python Server ready to receive messages
+[2025-11-28T21:41:24.002+0000] {docker.py:438} INFO - 2025-11-28 21:41:23,992:py4j.clientserver:wait_for_commands:INFO:Received command c on object id p0
+[2025-11-28T21:45:35.942+0000] {timeout.py:68} ERROR - Process timed out, PID: 207
+[2025-11-28T21:45:36.215+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2025-11-28T21:45:36.339+0000] {taskinstance.py:2905} ERROR - Task failed with exception
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/providers/docker/operators/docker.py", line 434, in _run_image_with_mounts
+    for log_chunk in logstream:
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/types/daemon.py", line 29, in __next__
+    return next(self._stream)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/api/client.py", line 438, in <genexpr>
+    gen = (data for (_, data) in gen)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/utils/socket.py", line 112, in frames_iter_no_tty
+    (stream, n) = next_frame_header(socket)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/utils/socket.py", line 84, in next_frame_header
+    data = read_exactly(socket, 8)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/utils/socket.py", line 69, in read_exactly
+    next_data = read(socket, n - len(data))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/utils/socket.py", line 40, in read
+    poll.poll()
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/utils/timeout.py", line 69, in handle_timeout
+    raise AirflowTaskTimeout(self.error_message)
+airflow.exceptions.AirflowTaskTimeout: Timeout, PID: 207
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/api/client.py", line 275, in _raise_for_status
+    response.raise_for_status()
+  File "/home/airflow/.local/lib/python3.11/site-packages/requests/models.py", line 1021, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 409 Client Error: Conflict for url: http+docker://localhost/v1.51/containers/6aa95cf4328f1f0445688e3aa6f54d1b1e19b5264a68e61a671a92b9ec088c1e?v=False&link=False&force=False
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/taskinstance.py", line 460, in _execute_task
+    result = _execute_callable(context=context, **execute_callable_kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/taskinstance.py", line 432, in _execute_callable
+    return execute_callable(context=context, **execute_callable_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/baseoperator.py", line 401, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/providers/docker/operators/docker.py", line 513, in execute
+    return self._run_image()
+           ^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/providers/docker/operators/docker.py", line 384, in _run_image
+    return self._run_image_with_mounts(self.mounts, add_tmp_variable=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/providers/docker/operators/docker.py", line 464, in _run_image_with_mounts
+    self.cli.remove_container(self.container["Id"])
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/utils/decorators.py", line 19, in wrapped
+    return f(self, resource_id, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/api/container.py", line 1037, in remove_container
+    self._raise_for_status(res)
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/api/client.py", line 277, in _raise_for_status
+    raise create_api_error_from_http_exception(e) from e
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/docker/errors.py", line 39, in create_api_error_from_http_exception
+    raise cls(e, response=response, explanation=explanation) from e
+docker.errors.APIError: 409 Client Error for http+docker://localhost/v1.51/containers/6aa95cf4328f1f0445688e3aa6f54d1b1e19b5264a68e61a671a92b9ec088c1e?v=False&link=False&force=False: Conflict ("cannot remove container "6aa95cf4328f1f0445688e3aa6f54d1b1e19b5264a68e61a671a92b9ec088c1e": container is running: stop the container before removing or force remove")
+[2025-11-28T21:45:37.247+0000] {taskinstance.py:1206} INFO - Marking task as UP_FOR_RETRY. dag_id=name_stream_dag, task_id=spark_stream_to_s3, run_id=scheduled__2025-11-28T21:30:00+00:00, execution_date=20251128T213000, start_date=20251128T214035, end_date=20251128T214537
+[2025-11-28T21:45:38.037+0000] {standard_task_runner.py:110} ERROR - Failed to execute job 359 for task spark_stream_to_s3 (409 Client Error for http+docker://localhost/v1.51/containers/6aa95cf4328f1f0445688e3aa6f54d1b1e19b5264a68e61a671a92b9ec088c1e?v=False&link=False&force=False: Conflict ("cannot remove container "6aa95cf4328f1f0445688e3aa6f54d1b1e19b5264a68e61a671a92b9ec088c1e": container is running: stop the container before removing or force remove"); 207)
+[2025-11-28T21:45:38.143+0000] {local_task_job_runner.py:243} INFO - Task exited with return code 1
+[2025-11-28T21:45:38.755+0000] {taskinstance.py:3503} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2025-11-28T21:45:39.014+0000] {local_task_job_runner.py:222} INFO - ::endgroup::

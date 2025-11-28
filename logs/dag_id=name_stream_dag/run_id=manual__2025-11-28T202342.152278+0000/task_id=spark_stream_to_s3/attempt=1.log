@@ -1,0 +1,217 @@
+[2025-11-28T20:39:15.959+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2025-11-28T20:39:16.085+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: name_stream_dag.spark_stream_to_s3 manual__2025-11-28T20:23:42.152278+00:00 [queued]>
+[2025-11-28T20:39:16.101+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: name_stream_dag.spark_stream_to_s3 manual__2025-11-28T20:23:42.152278+00:00 [queued]>
+[2025-11-28T20:39:16.102+0000] {taskinstance.py:2306} INFO - Starting attempt 1 of 2
+[2025-11-28T20:39:16.245+0000] {taskinstance.py:2330} INFO - Executing <Task(DockerOperator): spark_stream_to_s3> on 2025-11-28 20:23:42.152278+00:00
+[2025-11-28T20:39:16.262+0000] {standard_task_runner.py:64} INFO - Started process 183 to run task
+[2025-11-28T20:39:16.269+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'name_stream_dag', 'spark_stream_to_s3', 'manual__2025-11-28T20:23:42.152278+00:00', '--job-id', '278', '--raw', '--subdir', 'DAGS_FOLDER/kafka_stream_dag.py', '--cfg-path', '/tmp/tmplepjcojb']
+[2025-11-28T20:39:16.276+0000] {standard_task_runner.py:91} INFO - Job 278: Subtask spark_stream_to_s3
+[2025-11-28T20:39:16.645+0000] {task_command.py:426} INFO - Running <TaskInstance: name_stream_dag.spark_stream_to_s3 manual__2025-11-28T20:23:42.152278+00:00 [running]> on host 24004975b9d1
+[2025-11-28T20:39:17.728+0000] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='name_stream_dag' AIRFLOW_CTX_TASK_ID='spark_stream_to_s3' AIRFLOW_CTX_EXECUTION_DATE='2025-11-28T20:23:42.152278+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2025-11-28T20:23:42.152278+00:00'
+[2025-11-28T20:39:17.732+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2025-11-28T20:39:18.017+0000] {docker.py:367} INFO - Starting docker container from image custom-spark
+[2025-11-28T20:39:19.007+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:39:18.99 [0m[38;5;2mINFO [0m ==>
+[2025-11-28T20:39:19.016+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:39:19.00 [0m[38;5;2mINFO [0m ==> [1mWelcome to the Bitnami spark container[0m
+[2025-11-28T20:39:19.021+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:39:19.01 [0m[38;5;2mINFO [0m ==> Subscribe to project updates by watching [1mhttps://github.com/bitnami/containers[0m
+[2025-11-28T20:39:19.024+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:39:19.02 [0m[38;5;2mINFO [0m ==> Submit issues and feature requests at [1mhttps://github.com/bitnami/containers/issues[0m
+[2025-11-28T20:39:19.030+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:39:19.02 [0m[38;5;2mINFO [0m ==> Upgrade to Tanzu Application Catalog for production environments to access custom-configured and pre-packaged software components. Gain enhanced features, including Software Bill of Materials (SBOM), CVE scan result reports, and VEX documents. To learn more, visit [1mhttps://bitnami.com/enterprise[0m
+[2025-11-28T20:39:19.033+0000] {docker.py:438} INFO - [38;5;6mspark [38;5;5m20:39:19.03 [0m[38;5;2mINFO [0m ==>
+[2025-11-28T20:39:19.063+0000] {docker.py:438} INFO - 
+[2025-11-28T20:39:33.356+0000] {docker.py:438} INFO - 2025-11-28 20:39:33,331:spark_structured_streaming:main:INFO:Spark streaming config: app_name=spark_streaming brokers=kafka:19092 topic=names_topic bucket=namegeneratorbucket output_prefix=names checkpoint_prefix=checkpoints/names region=eu-west-2 endpoint=None path_style=None ssl_enabled=None
+[2025-11-28T20:39:33.922+0000] {docker.py:438} INFO - 25/11/28 20:39:33 INFO SparkContext: Running Spark version 3.5.1
+[2025-11-28T20:39:33.924+0000] {docker.py:438} INFO - 25/11/28 20:39:33 INFO SparkContext: OS info Linux, 6.6.87.2-microsoft-standard-WSL2, amd64
+[2025-11-28T20:39:33.934+0000] {docker.py:438} INFO - 25/11/28 20:39:33 INFO SparkContext: Java version 17.0.12
+[2025-11-28T20:39:34.115+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO ResourceUtils: ==============================================================
+[2025-11-28T20:39:34.124+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO ResourceUtils: No custom resources configured for spark.driver.
+[2025-11-28T20:39:34.126+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO ResourceUtils: ==============================================================
+[2025-11-28T20:39:34.128+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO SparkContext: Submitted application: spark_streaming
+[2025-11-28T20:39:34.255+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO ResourceProfile: Default ResourceProfile created, executor resources: Map(memory -> name: memory, amount: 1024, script: , vendor: , offHeap -> name: offHeap, amount: 0, script: , vendor: ), task resources: Map(cpus -> name: cpus, amount: 1.0)
+[2025-11-28T20:39:34.290+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO ResourceProfile: Limiting resource is cpu
+[2025-11-28T20:39:34.293+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO ResourceProfileManager: Added ResourceProfile id: 0
+[2025-11-28T20:39:34.603+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO SecurityManager: Changing view acls to: spark
+[2025-11-28T20:39:34.605+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO SecurityManager: Changing modify acls to: spark
+[2025-11-28T20:39:34.606+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO SecurityManager: Changing view acls groups to:
+[2025-11-28T20:39:34.608+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO SecurityManager: Changing modify acls groups to:
+[2025-11-28T20:39:34.611+0000] {docker.py:438} INFO - 25/11/28 20:39:34 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: spark; groups with view permissions: EMPTY; users with modify permissions: spark; groups with modify permissions: EMPTY
+[2025-11-28T20:39:34.925+0000] {docker.py:438} INFO - 25/11/28 20:39:34 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+[2025-11-28T20:39:36.526+0000] {docker.py:438} INFO - 25/11/28 20:39:36 INFO Utils: Successfully started service 'sparkDriver' on port 37595.
+[2025-11-28T20:39:36.736+0000] {docker.py:438} INFO - 25/11/28 20:39:36 INFO SparkEnv: Registering MapOutputTracker
+[2025-11-28T20:39:37.116+0000] {docker.py:438} INFO - 25/11/28 20:39:37 INFO SparkEnv: Registering BlockManagerMaster
+[2025-11-28T20:39:37.276+0000] {docker.py:438} INFO - 25/11/28 20:39:37 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+[2025-11-28T20:39:37.284+0000] {docker.py:438} INFO - 25/11/28 20:39:37 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+[2025-11-28T20:39:37.318+0000] {docker.py:438} INFO - 25/11/28 20:39:37 INFO SparkEnv: Registering BlockManagerMasterHeartbeat
+[2025-11-28T20:39:37.584+0000] {docker.py:438} INFO - 25/11/28 20:39:37 INFO DiskBlockManager: Created local directory at /tmp/blockmgr-2884dd12-5ca1-4800-912b-2656fb3fec8f
+[2025-11-28T20:39:37.683+0000] {docker.py:438} INFO - 25/11/28 20:39:37 INFO MemoryStore: MemoryStore started with capacity 434.4 MiB
+[2025-11-28T20:39:37.751+0000] {docker.py:438} INFO - 25/11/28 20:39:37 INFO SparkEnv: Registering OutputCommitCoordinator
+[2025-11-28T20:39:38.654+0000] {docker.py:438} INFO - 25/11/28 20:39:38 INFO JettyUtils: Start Jetty 0.0.0.0:4040 for SparkUI
+[2025-11-28T20:39:39.828+0000] {docker.py:438} INFO - 25/11/28 20:39:39 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+[2025-11-28T20:39:41.156+0000] {docker.py:438} INFO - 25/11/28 20:39:41 INFO StandaloneAppClient$ClientEndpoint: Connecting to master spark://spark-master:7077...
+[2025-11-28T20:39:41.558+0000] {docker.py:438} INFO - 25/11/28 20:39:41 INFO TransportClientFactory: Successfully created connection to spark-master/172.18.0.4:7077 after 267 ms (0 ms spent in bootstraps)
+[2025-11-28T20:39:42.355+0000] {docker.py:438} INFO - 25/11/28 20:39:42 INFO StandaloneSchedulerBackend: Connected to Spark cluster with app ID app-20251128203942-0005
+[2025-11-28T20:39:42.537+0000] {docker.py:438} INFO - 25/11/28 20:39:42 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 42671.
+[2025-11-28T20:39:42.542+0000] {docker.py:438} INFO - 25/11/28 20:39:42 INFO NettyBlockTransferService: Server created on 12c229c57028:42671
+[2025-11-28T20:39:42.565+0000] {docker.py:438} INFO - 25/11/28 20:39:42 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+[2025-11-28T20:39:42.695+0000] {docker.py:438} INFO - 25/11/28 20:39:42 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, 12c229c57028, 42671, None)
+[2025-11-28T20:39:42.754+0000] {docker.py:438} INFO - 25/11/28 20:39:42 INFO BlockManagerMasterEndpoint: Registering block manager 12c229c57028:42671 with 434.4 MiB RAM, BlockManagerId(driver, 12c229c57028, 42671, None)
+[2025-11-28T20:39:42.762+0000] {docker.py:438} INFO - 25/11/28 20:39:42 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, 12c229c57028, 42671, None)
+[2025-11-28T20:39:42.778+0000] {docker.py:438} INFO - 25/11/28 20:39:42 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, 12c229c57028, 42671, None)
+[2025-11-28T20:39:44.333+0000] {docker.py:438} INFO - 25/11/28 20:39:44 INFO StandaloneSchedulerBackend: SchedulerBackend is ready for scheduling beginning after reached minRegisteredResourcesRatio: 0.0
+[2025-11-28T20:39:45.232+0000] {docker.py:438} INFO - 2025-11-28 20:39:45,228:spark_structured_streaming:s3_healthcheck_write:INFO:Running S3 healthcheck, writing marker to s3a://namegeneratorbucket/names/healthcheck/_SUCCESS
+[2025-11-28T20:39:49.841+0000] {docker.py:438} INFO - 2025-11-28 20:39:49,824:spark_structured_streaming:s3_healthcheck_write:ERROR:S3 healthcheck FAILED while writing marker to s3a://namegeneratorbucket/names/healthcheck/_SUCCESS
+[2025-11-28T20:39:49.843+0000] {docker.py:438} INFO - Traceback (most recent call last):
+[2025-11-28T20:39:49.844+0000] {docker.py:438} INFO -   File "/opt/spark/app/spark_processing.py", line 192, in s3_healthcheck_write
+[2025-11-28T20:39:49.845+0000] {docker.py:438} INFO -     fs.mkdirs(health_dir_path)
+[2025-11-28T20:39:49.846+0000] {docker.py:438} INFO -   File "/opt/bitnami/spark/python/lib/py4j-0.10.9.7-src.zip/py4j/java_gateway.py", line 1322, in __call__
+[2025-11-28T20:39:49.847+0000] {docker.py:438} INFO -     return_value = get_return_value(
+[2025-11-28T20:39:49.848+0000] {docker.py:438} INFO -                    ^^^^^^^^^^^^^^^^^
+[2025-11-28T20:39:49.849+0000] {docker.py:438} INFO -   File "/opt/bitnami/spark/python/lib/pyspark.zip/pyspark/errors/exceptions/captured.py", line 179, in deco
+[2025-11-28T20:39:49.850+0000] {docker.py:438} INFO -     return f(*a, **kw)
+[2025-11-28T20:39:49.851+0000] {docker.py:438} INFO -            ^^^^^^^^^^^
+[2025-11-28T20:39:49.851+0000] {docker.py:438} INFO -   File "/opt/bitnami/spark/python/lib/py4j-0.10.9.7-src.zip/py4j/protocol.py", line 326, in get_return_value
+[2025-11-28T20:39:49.852+0000] {docker.py:438} INFO -     raise Py4JJavaError(
+[2025-11-28T20:39:49.853+0000] {docker.py:438} INFO - py4j.protocol.Py4JJavaError: An error occurred while calling o38.mkdirs.
+[2025-11-28T20:39:49.854+0000] {docker.py:438} INFO - : org.apache.hadoop.fs.s3a.AWSBadRequestException: getFileStatus on s3a://namegeneratorbucket/names/healthcheck: com.amazonaws.services.s3.model.AmazonS3Exception: The provided token has expired. (Service: Amazon S3; Status Code: 400; Error Code: ExpiredToken; Request ID: CR3G18PGJEFBRB28; S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=; Proxy: null), S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=:ExpiredToken: The provided token has expired. (Service: Amazon S3; Status Code: 400; Error Code: ExpiredToken; Request ID: CR3G18PGJEFBRB28; S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=; Proxy: null)
+[2025-11-28T20:39:49.855+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AUtils.translateException(S3AUtils.java:249)
+[2025-11-28T20:39:49.856+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AUtils.translateException(S3AUtils.java:175)
+[2025-11-28T20:39:49.856+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.s3GetFileStatus(S3AFileSystem.java:3858)
+[2025-11-28T20:39:49.857+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.innerGetFileStatus(S3AFileSystem.java:3688)
+[2025-11-28T20:39:49.858+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem$MkdirOperationCallbacksImpl.probePathStatus(S3AFileSystem.java:3455)
+[2025-11-28T20:39:49.860+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.MkdirOperation.probePathStatusOrNull(MkdirOperation.java:135)
+[2025-11-28T20:39:49.861+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.MkdirOperation.getPathStatusExpectingDir(MkdirOperation.java:150)
+[2025-11-28T20:39:49.862+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.MkdirOperation.execute(MkdirOperation.java:80)
+[2025-11-28T20:39:49.863+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.MkdirOperation.execute(MkdirOperation.java:45)
+[2025-11-28T20:39:49.865+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.ExecutingStoreOperation.apply(ExecutingStoreOperation.java:76)
+[2025-11-28T20:39:49.866+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.statistics.impl.IOStatisticsBinding.lambda$trackDurationOfOperation$5(IOStatisticsBinding.java:499)
+[2025-11-28T20:39:49.868+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.statistics.impl.IOStatisticsBinding.trackDuration(IOStatisticsBinding.java:444)
+[2025-11-28T20:39:49.869+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.trackDurationAndSpan(S3AFileSystem.java:2337)
+[2025-11-28T20:39:49.872+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.trackDurationAndSpan(S3AFileSystem.java:2356)
+[2025-11-28T20:39:49.878+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.mkdirs(S3AFileSystem.java:3428)
+[2025-11-28T20:39:49.879+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.FileSystem.mkdirs(FileSystem.java:2388)
+[2025-11-28T20:39:49.880+0000] {docker.py:438} INFO - 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+[2025-11-28T20:39:49.880+0000] {docker.py:438} INFO - 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+[2025-11-28T20:39:49.881+0000] {docker.py:438} INFO - 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+[2025-11-28T20:39:49.883+0000] {docker.py:438} INFO - 	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+[2025-11-28T20:39:49.884+0000] {docker.py:438} INFO - 	at py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:244)
+[2025-11-28T20:39:49.885+0000] {docker.py:438} INFO - 	at py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:374)
+[2025-11-28T20:39:49.886+0000] {docker.py:438} INFO - 	at py4j.Gateway.invoke(Gateway.java:282)
+[2025-11-28T20:39:49.887+0000] {docker.py:438} INFO - 	at py4j.commands.AbstractCommand.invokeMethod(AbstractCommand.java:132)
+[2025-11-28T20:39:49.888+0000] {docker.py:438} INFO - 	at py4j.commands.CallCommand.execute(CallCommand.java:79)
+[2025-11-28T20:39:49.889+0000] {docker.py:438} INFO - 	at py4j.ClientServerConnection.waitForCommands(ClientServerConnection.java:182)
+[2025-11-28T20:39:49.890+0000] {docker.py:438} INFO - 	at py4j.ClientServerConnection.run(ClientServerConnection.java:106)
+[2025-11-28T20:39:49.890+0000] {docker.py:438} INFO - 	at java.base/java.lang.Thread.run(Thread.java:840)
+[2025-11-28T20:39:49.891+0000] {docker.py:438} INFO - Caused by: com.amazonaws.services.s3.model.AmazonS3Exception: The provided token has expired. (Service: Amazon S3; Status Code: 400; Error Code: ExpiredToken; Request ID: CR3G18PGJEFBRB28; S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=; Proxy: null), S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=
+[2025-11-28T20:39:49.891+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.handleErrorResponse(AmazonHttpClient.java:1879)
+[2025-11-28T20:39:49.892+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.handleServiceErrorResponse(AmazonHttpClient.java:1418)
+[2025-11-28T20:39:49.892+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.executeOneRequest(AmazonHttpClient.java:1387)
+[2025-11-28T20:39:49.893+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.executeHelper(AmazonHttpClient.java:1157)
+[2025-11-28T20:39:49.895+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.doExecute(AmazonHttpClient.java:814)
+[2025-11-28T20:39:49.896+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.executeWithTimer(AmazonHttpClient.java:781)
+[2025-11-28T20:39:49.897+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.execute(AmazonHttpClient.java:755)
+[2025-11-28T20:39:49.898+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.access$500(AmazonHttpClient.java:715)
+[2025-11-28T20:39:49.899+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutionBuilderImpl.execute(AmazonHttpClient.java:697)
+[2025-11-28T20:39:49.900+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient.execute(AmazonHttpClient.java:561)
+[2025-11-28T20:39:49.901+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient.execute(AmazonHttpClient.java:541)
+[2025-11-28T20:39:49.901+0000] {docker.py:438} INFO - 	at com.amazonaws.services.s3.AmazonS3Client.invoke(AmazonS3Client.java:5456)
+[2025-11-28T20:39:49.902+0000] {docker.py:438} INFO - 	at com.amazonaws.services.s3.AmazonS3Client.invoke(AmazonS3Client.java:5403)
+[2025-11-28T20:39:49.903+0000] {docker.py:438} INFO - 	at com.amazonaws.services.s3.AmazonS3Client.invoke(AmazonS3Client.java:5397)
+[2025-11-28T20:39:49.904+0000] {docker.py:438} INFO - 	at com.amazonaws.services.s3.AmazonS3Client.listObjectsV2(AmazonS3Client.java:971)
+[2025-11-28T20:39:49.905+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.lambda$listObjects$11(S3AFileSystem.java:2595)
+[2025-11-28T20:39:49.906+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.statistics.impl.IOStatisticsBinding.lambda$trackDurationOfOperation$5(IOStatisticsBinding.java:499)
+[2025-11-28T20:39:49.906+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.Invoker.retryUntranslated(Invoker.java:414)
+[2025-11-28T20:39:49.907+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.Invoker.retryUntranslated(Invoker.java:377)
+[2025-11-28T20:39:49.908+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.listObjects(S3AFileSystem.java:2586)
+[2025-11-28T20:39:49.908+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.s3GetFileStatus(S3AFileSystem.java:3832)
+[2025-11-28T20:39:49.909+0000] {docker.py:438} INFO - 	... 25 more
+[2025-11-28T20:39:49.910+0000] {docker.py:438} INFO - 
+[2025-11-28T20:39:49.912+0000] {docker.py:438} INFO - 2025-11-28 20:39:49,838:spark_structured_streaming:main:INFO:Stopping Spark session.
+[2025-11-28T20:39:50.484+0000] {docker.py:438} INFO - Traceback (most recent call last):
+[2025-11-28T20:39:50.491+0000] {docker.py:438} INFO -   File "/opt/spark/app/spark_processing.py", line 331, in <module>
+[2025-11-28T20:39:50.492+0000] {docker.py:438} INFO - main()
+[2025-11-28T20:39:50.493+0000] {docker.py:438} INFO -   File "/opt/spark/app/spark_processing.py", line 320, in main
+[2025-11-28T20:39:50.494+0000] {docker.py:438} INFO - s3_healthcheck_write(spark, path)
+[2025-11-28T20:39:50.495+0000] {docker.py:438} INFO -   File "/opt/spark/app/spark_processing.py", line 192, in s3_healthcheck_write
+[2025-11-28T20:39:50.496+0000] {docker.py:438} INFO -     fs.mkdirs(health_dir_path)
+[2025-11-28T20:39:50.496+0000] {docker.py:438} INFO -   File "/opt/bitnami/spark/python/lib/py4j-0.10.9.7-src.zip/py4j/java_gateway.py", line 1322, in __call__
+[2025-11-28T20:39:50.497+0000] {docker.py:438} INFO -   File "/opt/bitnami/spark/python/lib/pyspark.zip/pyspark/errors/exceptions/captured.py", line 179, in deco
+[2025-11-28T20:39:50.498+0000] {docker.py:438} INFO -   File "/opt/bitnami/spark/python/lib/py4j-0.10.9.7-src.zip/py4j/protocol.py", line 326, in get_return_value
+[2025-11-28T20:39:50.499+0000] {docker.py:438} INFO - py4j.protocol.Py4JJavaError
+[2025-11-28T20:39:50.499+0000] {docker.py:438} INFO - : An error occurred while calling o38.mkdirs.
+[2025-11-28T20:39:50.500+0000] {docker.py:438} INFO - : org.apache.hadoop.fs.s3a.AWSBadRequestException: getFileStatus on s3a://namegeneratorbucket/names/healthcheck: com.amazonaws.services.s3.model.AmazonS3Exception: The provided token has expired. (Service: Amazon S3; Status Code: 400; Error Code: ExpiredToken; Request ID: CR3G18PGJEFBRB28; S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=; Proxy: null), S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=:ExpiredToken: The provided token has expired. (Service: Amazon S3; Status Code: 400; Error Code: ExpiredToken; Request ID: CR3G18PGJEFBRB28; S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=; Proxy: null)
+[2025-11-28T20:39:50.501+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AUtils.translateException(S3AUtils.java:249)
+[2025-11-28T20:39:50.501+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AUtils.translateException(S3AUtils.java:175)
+[2025-11-28T20:39:50.502+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.s3GetFileStatus(S3AFileSystem.java:3858)
+[2025-11-28T20:39:50.502+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.innerGetFileStatus(S3AFileSystem.java:3688)
+[2025-11-28T20:39:50.503+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem$MkdirOperationCallbacksImpl.probePathStatus(S3AFileSystem.java:3455)
+[2025-11-28T20:39:50.503+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.MkdirOperation.probePathStatusOrNull(MkdirOperation.java:135)
+[2025-11-28T20:39:50.504+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.MkdirOperation.getPathStatusExpectingDir(MkdirOperation.java:150)
+[2025-11-28T20:39:50.505+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.MkdirOperation.execute(MkdirOperation.java:80)
+[2025-11-28T20:39:50.506+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.MkdirOperation.execute(MkdirOperation.java:45)
+[2025-11-28T20:39:50.507+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.impl.ExecutingStoreOperation.apply(ExecutingStoreOperation.java:76)
+[2025-11-28T20:39:50.508+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.statistics.impl.IOStatisticsBinding.lambda$trackDurationOfOperation$5(IOStatisticsBinding.java:499)
+[2025-11-28T20:39:50.508+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.statistics.impl.IOStatisticsBinding.trackDuration(IOStatisticsBinding.java:444)
+[2025-11-28T20:39:50.509+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.trackDurationAndSpan(S3AFileSystem.java:2337)
+[2025-11-28T20:39:50.510+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.trackDurationAndSpan(S3AFileSystem.java:2356)
+[2025-11-28T20:39:50.511+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.mkdirs(S3AFileSystem.java:3428)
+[2025-11-28T20:39:50.511+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.FileSystem.mkdirs(FileSystem.java:2388)
+[2025-11-28T20:39:50.512+0000] {docker.py:438} INFO - 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+[2025-11-28T20:39:50.512+0000] {docker.py:438} INFO - 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+[2025-11-28T20:39:50.513+0000] {docker.py:438} INFO - 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+[2025-11-28T20:39:50.514+0000] {docker.py:438} INFO - 	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+[2025-11-28T20:39:50.515+0000] {docker.py:438} INFO - 	at py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:244)
+[2025-11-28T20:39:50.516+0000] {docker.py:438} INFO - 	at py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:374)
+[2025-11-28T20:39:50.517+0000] {docker.py:438} INFO - 	at py4j.Gateway.invoke(Gateway.java:282)
+[2025-11-28T20:39:50.518+0000] {docker.py:438} INFO - 	at py4j.commands.AbstractCommand.invokeMethod(AbstractCommand.java:132)
+[2025-11-28T20:39:50.519+0000] {docker.py:438} INFO - 	at py4j.commands.CallCommand.execute(CallCommand.java:79)
+[2025-11-28T20:39:50.520+0000] {docker.py:438} INFO - 	at py4j.ClientServerConnection.waitForCommands(ClientServerConnection.java:182)
+[2025-11-28T20:39:50.520+0000] {docker.py:438} INFO - 	at py4j.ClientServerConnection.run(ClientServerConnection.java:106)
+[2025-11-28T20:39:50.521+0000] {docker.py:438} INFO - 	at java.base/java.lang.Thread.run(Thread.java:840)
+[2025-11-28T20:39:50.523+0000] {docker.py:438} INFO - Caused by: com.amazonaws.services.s3.model.AmazonS3Exception: The provided token has expired. (Service: Amazon S3; Status Code: 400; Error Code: ExpiredToken; Request ID: CR3G18PGJEFBRB28; S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=; Proxy: null), S3 Extended Request ID: AjL/mzWI0PXsL1GyPC/9N6NNcPj3+iYembtNgs5dTqZ/pBwBwwgHuK88HluKCTB6hAKKWhvb4zv7VPKg1E2iRugTCA8sDseJeBhcI8dgU7g=
+[2025-11-28T20:39:50.524+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.handleErrorResponse(AmazonHttpClient.java:1879)
+[2025-11-28T20:39:50.524+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.handleServiceErrorResponse(AmazonHttpClient.java:1418)
+[2025-11-28T20:39:50.525+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.executeOneRequest(AmazonHttpClient.java:1387)
+[2025-11-28T20:39:50.527+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.executeHelper(AmazonHttpClient.java:1157)
+[2025-11-28T20:39:50.528+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.doExecute(AmazonHttpClient.java:814)
+[2025-11-28T20:39:50.531+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.executeWithTimer(AmazonHttpClient.java:781)
+[2025-11-28T20:39:50.532+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.execute(AmazonHttpClient.java:755)
+[2025-11-28T20:39:50.533+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutor.access$500(AmazonHttpClient.java:715)
+[2025-11-28T20:39:50.534+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient$RequestExecutionBuilderImpl.execute(AmazonHttpClient.java:697)
+[2025-11-28T20:39:50.534+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient.execute(AmazonHttpClient.java:561)
+[2025-11-28T20:39:50.535+0000] {docker.py:438} INFO - 	at com.amazonaws.http.AmazonHttpClient.execute(AmazonHttpClient.java:541)
+[2025-11-28T20:39:50.535+0000] {docker.py:438} INFO - 	at com.amazonaws.services.s3.AmazonS3Client.invoke(AmazonS3Client.java:5456)
+[2025-11-28T20:39:50.536+0000] {docker.py:438} INFO - 	at com.amazonaws.services.s3.AmazonS3Client.invoke(AmazonS3Client.java:5403)
+[2025-11-28T20:39:50.536+0000] {docker.py:438} INFO - 	at com.amazonaws.services.s3.AmazonS3Client.invoke(AmazonS3Client.java:5397)
+[2025-11-28T20:39:50.537+0000] {docker.py:438} INFO - 	at com.amazonaws.services.s3.AmazonS3Client.listObjectsV2(AmazonS3Client.java:971)
+[2025-11-28T20:39:50.548+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.lambda$listObjects$11(S3AFileSystem.java:2595)
+[2025-11-28T20:39:50.550+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.statistics.impl.IOStatisticsBinding.lambda$trackDurationOfOperation$5(IOStatisticsBinding.java:499)
+[2025-11-28T20:39:50.551+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.Invoker.retryUntranslated(Invoker.java:414)
+[2025-11-28T20:39:50.551+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.Invoker.retryUntranslated(Invoker.java:377)
+[2025-11-28T20:39:50.552+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.listObjects(S3AFileSystem.java:2586)
+[2025-11-28T20:39:50.552+0000] {docker.py:438} INFO - 	at org.apache.hadoop.fs.s3a.S3AFileSystem.s3GetFileStatus(S3AFileSystem.java:3832)
+[2025-11-28T20:39:50.553+0000] {docker.py:438} INFO - 	... 25 more
+[2025-11-28T20:39:50.554+0000] {docker.py:438} INFO - 2025-11-28 20:39:50,485:py4j.clientserver:close:INFO:Closing down clientserver connection
+[2025-11-28T20:39:51.333+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2025-11-28T20:39:51.432+0000] {taskinstance.py:2905} ERROR - Task failed with exception
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/taskinstance.py", line 465, in _execute_task
+    result = _execute_callable(context=context, **execute_callable_kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/taskinstance.py", line 432, in _execute_callable
+    return execute_callable(context=context, **execute_callable_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/baseoperator.py", line 401, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/providers/docker/operators/docker.py", line 513, in execute
+    return self._run_image()
+           ^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/providers/docker/operators/docker.py", line 384, in _run_image
+    return self._run_image_with_mounts(self.mounts, add_tmp_variable=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/providers/docker/operators/docker.py", line 446, in _run_image_with_mounts
+    raise DockerContainerFailedException(f"Docker container failed: {result!r}", logs=log_lines)
+airflow.providers.docker.exceptions.DockerContainerFailedException: Docker container failed: {'StatusCode': 1}
+[2025-11-28T20:39:51.441+0000] {taskinstance.py:1206} INFO - Marking task as UP_FOR_RETRY. dag_id=name_stream_dag, task_id=spark_stream_to_s3, run_id=manual__2025-11-28T20:23:42.152278+00:00, execution_date=20251128T202342, start_date=20251128T203916, end_date=20251128T203951
+[2025-11-28T20:39:51.536+0000] {standard_task_runner.py:110} ERROR - Failed to execute job 278 for task spark_stream_to_s3 (Docker container failed: {'StatusCode': 1}; 183)
+[2025-11-28T20:39:51.591+0000] {local_task_job_runner.py:243} INFO - Task exited with return code 1
+[2025-11-28T20:39:51.658+0000] {taskinstance.py:3503} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2025-11-28T20:39:51.683+0000] {local_task_job_runner.py:222} INFO - ::endgroup::

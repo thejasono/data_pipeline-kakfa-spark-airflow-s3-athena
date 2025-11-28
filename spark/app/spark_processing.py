@@ -163,29 +163,46 @@ def transform_streaming_data(df: DataFrame) -> DataFrame:
 
 
 def s3_healthcheck_write(spark: SparkSession, path: str) -> None:
-    """Perform a small test write to S3A to confirm credentials/endpoint work.
-
-    Writes a single-row JSON file under:
-    {path}/_healthcheck/{timestamp}/part-...json
     """
-    # Example: 2025-11-28T19-52-30Z
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-    health_path = f"{path.rstrip('/')}/_healthcheck/{ts}"
+    Perform a small healthcheck against S3A by creating a marker file:
 
-    logger.info("Running S3 healthcheck write to %s", health_path)
+        {path}/healthcheck/_SUCCESS
+
+    where {path} is e.g. "s3a://namegeneratorbucket/names".
+    """
+    base = path.rstrip("/")                 # s3a://bucket/names
+    health_dir = f"{base}/healthcheck"      # s3a://bucket/names/healthcheck
+    marker = f"{health_dir}/_SUCCESS"       # s3a://bucket/names/healthcheck/_SUCCESS"
+
+    ts = datetime.now(timezone.utc).isoformat()
+    logger.info("Running S3 healthcheck, writing marker to %s", marker)
 
     try:
-        df = spark.createDataFrame([(ts,)], ["healthcheck_timestamp"])
-        (
-            df.write
-            .mode("append")
-            .format("json")
-            .save(health_path)
-        )
-        logger.info("S3 healthcheck write succeeded at %s", health_path)
+        jvm = spark._jvm
+        hadoop_conf = spark.sparkContext._jsc.hadoopConfiguration()
+        Path = jvm.org.apache.hadoop.fs.Path
+
+        health_dir_path = Path(health_dir)
+        marker_path = Path(marker)
+
+        # Get the correct FS implementation for the s3a:// path, not the default FS
+        fs = marker_path.getFileSystem(hadoop_conf)
+
+        # Ensure the "directory" prefix exists (harmless for S3A)
+        fs.mkdirs(health_dir_path)
+
+        # Create / overwrite the marker file and write a simple payload
+        out_stream = fs.create(marker_path, True)  # True = overwrite if exists
+        payload = f"OK {ts}\n".encode("utf-8")
+        out_stream.write(payload)
+        out_stream.close()
+
+        logger.info("S3 healthcheck marker successfully written at %s", marker)
     except Exception:
-        logger.exception("S3 healthcheck write FAILED at %s", health_path)
+        logger.exception("S3 healthcheck FAILED while writing marker to %s", marker)
         raise
+
+
 
 
 def initiate_streaming_to_bucket(df: DataFrame, path: str, checkpoint_location: str) -> None:

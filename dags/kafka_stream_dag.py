@@ -9,7 +9,7 @@ import pendulum
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator  # for Option A (spark-submit inside Airflow)
-# from airflow.providers.docker.operators.docker import DockerOperator  # for Option B (Spark container)
+from airflow.providers.docker.operators.docker import DockerOperator  # for Option B (Spark container)
 
 # -------------------------------------------------------------------------
 # Callables used by tasks
@@ -100,58 +100,35 @@ with DAG(
     )
 
     # 4) Spark consumer: choose ONE of the following implementations
-    # -----------------------------------------------------------------
-    # Option A: BashOperator (Spark installed in Airflow image)
-    # -----------------------------------------------------------------
-    spark_stream_task = BashOperator(
-        task_id="spark_stream_to_s3",
-        bash_command=(
-            "/opt/bitnami/spark/bin/spark-submit "  # adjust if different in your Airflow image
-            "--master spark://spark-master:7077 "
-            "/opt/spark/app/spark_processing.py"
-        ),
-        env={
-            "KAFKA_BOOTSTRAP_SERVERS": "kafka:19092",
-            "KAFKA_TOPIC": "names_topic",
-            "S3_BUCKET": "names-bucket",
-            "S3_OUTPUT_PREFIX": "names",
-            "S3_CHECKPOINT_PREFIX": "checkpoints/names",
-            "S3_REGION": "eu-west-2",
-            "S3_ENDPOINT": "http://minio:9000",
-            "S3_PATH_STYLE_ACCESS": "true",
-            "AWS_ACCESS_KEY_ID": "admin",
-            "AWS_SECRET_ACCESS_KEY": "adminadmin",
-        },
-    )
 
     # -----------------------------------------------------------------
-    # Option B: DockerOperator (Spark runs in its own container)
+    #  DockerOperator (Spark runs in its own container)
     # Uncomment this block *and* the import at the top, then delete the
     # BashOperator spark_stream_task above.
     # -----------------------------------------------------------------
-    # spark_stream_task = DockerOperator(
-    #     task_id="spark_stream_to_s3",
-    #     image="custom-spark",  # same image as spark-master / spark_streaming
-    #     command=(
-    #         "/opt/bitnami/spark/bin/spark-submit "
-    #         "--master spark://spark-master:7077 "
-    #         "/opt/spark/app/spark_processing.py"
-    #     ),
-    #     network_mode="docker_streaming",  # must see kafka + minio + spark-master
-    #     environment={
-    #         "KAFKA_BOOTSTRAP_SERVERS": "kafka:19092",
-    #         "KAFKA_TOPIC": "names_topic",
-    #         "S3_BUCKET": "names-bucket",
-    #         "S3_OUTPUT_PREFIX": "names",
-    #         "S3_CHECKPOINT_PREFIX": "checkpoints/names",
-    #         "S3_REGION": "eu-west-2",
-    #         "S3_ENDPOINT": "http://minio:9000",
-    #         "S3_PATH_STYLE_ACCESS": "true",
-    #         "AWS_ACCESS_KEY_ID": "admin",
-    #         "AWS_SECRET_ACCESS_KEY": "adminadmin",
-    #     },
-    #     auto_remove=True,
-    # )
+    spark_stream_task = DockerOperator(
+         task_id="spark_stream_to_s3",
+         image="custom-spark",  # same image as spark-master / spark_streaming
+         command=(
+             "/opt/bitnami/spark/bin/spark-submit "
+             "--master spark://spark-master:7077 "
+             "/opt/spark/app/spark_processing.py"
+         ),
+         network_mode="docker_streaming",  # must see kafka + minio + spark-master
+         environment={
+             "KAFKA_BOOTSTRAP_SERVERS": "kafka:19092",
+             "KAFKA_TOPIC": "names_topic",
+             "S3_BUCKET": "names-bucket",
+             "S3_OUTPUT_PREFIX": "names",
+             "S3_CHECKPOINT_PREFIX": "checkpoints/names",
+             "S3_REGION": "eu-west-2",
+             "S3_ENDPOINT": "http://minio:9000",
+             "S3_PATH_STYLE_ACCESS": "true",
+             "AWS_ACCESS_KEY_ID": "admin",
+             "AWS_SECRET_ACCESS_KEY": "adminadmin",
+         },
+         auto_remove=True,
+     )
 
     # 5) Wiring: health checks → producer → Spark consumer
     kafka_health_check >> bucket_health_check >> kafka_stream_task >> spark_stream_task

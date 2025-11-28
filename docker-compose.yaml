@@ -113,6 +113,7 @@ services:
       - ./dags/producer:/opt/airflow/dags/producer
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     networks:
       - docker_streaming
@@ -150,6 +151,7 @@ services:
       - ./dags/producer:/opt/airflow/dags/producer
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     networks:
       - docker_streaming

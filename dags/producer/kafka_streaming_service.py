@@ -15,7 +15,13 @@ from typing import Dict, Any, Optional, TYPE_CHECKING
 
 import requests
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s:%(levelname)s:%(message)s",
+    )
+
 LOGGER = logging.getLogger(__name__)
+
 
 # Fallback data used if the API is unreachable.
 FALLBACK_LOCATIONS: tuple[dict[str, str], ...] = (
@@ -200,9 +206,11 @@ def delivery_status(err, msg):
 
 def publish_once(producer: Producer, topic: str, data: Dict[str, Any]) -> None:
     """Serialize dict → JSON bytes and enqueue to Kafka."""
+    value = json.dumps(data).encode("utf-8")
+    LOGGER.info("Producing record to topic=%s payload=%s", topic, data)
     producer.produce(
         topic,
-        value=json.dumps(data).encode("utf-8"),
+        value=value,
         on_delivery=delivery_status,
     )
     producer.poll(0)  # Drive I/O and callbacks.
@@ -211,20 +219,30 @@ def publish_once(producer: Producer, topic: str, data: Dict[str, Any]) -> None:
 # ---------------- Orchestrator ----------------
 def initiate_stream() -> None:
     """Run: ensure topic → build producer → loop(fetch→transform→produce) → flush."""
+    LOGGER.info(
+        "Starting Kafka stream: bootstrap=%s topic=%s interval=%s duration=%s",
+        KAFKA_BOOTSTRAP,
+        KAFKA_TOPIC,
+        PAUSE_INTERVAL,
+        STREAMING_DURATION,
+    )
     ensure_topic(KAFKA_BOOTSTRAP, KAFKA_TOPIC, num_partitions=1, replication_factor=1)
     producer = build_producer(KAFKA_BOOTSTRAP)
 
     iterations = STREAMING_DURATION // PAUSE_INTERVAL
     try:
-        for _ in range(iterations):
+        for i in range(iterations):
             raw = retrieve_user_data()
             payload = transform_user_data(raw)
+            LOGGER.info("Iteration %s/%s – sending payload %s", i + 1, iterations, payload)
             publish_once(producer, KAFKA_TOPIC, payload)
             time.sleep(PAUSE_INTERVAL)
     finally:
         remaining = producer.flush(10)
         if remaining:
-            print(f"Flush timed out with {remaining} message(s) still in queue.")
+            LOGGER.warning("Flush timed out with %s message(s) still in queue.", remaining)
+        else:
+            LOGGER.info("Kafka producer flushed all pending messages.")
 
 
 if __name__ == "__main__":

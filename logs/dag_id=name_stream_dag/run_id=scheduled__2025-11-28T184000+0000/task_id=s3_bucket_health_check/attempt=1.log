@@ -1,0 +1,43 @@
+[2025-11-28T18:45:16.581+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2025-11-28T18:45:16.890+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: name_stream_dag.s3_bucket_health_check scheduled__2025-11-28T18:40:00+00:00 [queued]>
+[2025-11-28T18:45:16.961+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: name_stream_dag.s3_bucket_health_check scheduled__2025-11-28T18:40:00+00:00 [queued]>
+[2025-11-28T18:45:16.965+0000] {taskinstance.py:2306} INFO - Starting attempt 1 of 2
+[2025-11-28T18:45:17.370+0000] {taskinstance.py:2330} INFO - Executing <Task(PythonOperator): s3_bucket_health_check> on 2025-11-28 18:40:00+00:00
+[2025-11-28T18:45:17.404+0000] {standard_task_runner.py:64} INFO - Started process 121 to run task
+[2025-11-28T18:45:17.431+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'name_stream_dag', 's3_bucket_health_check', 'scheduled__2025-11-28T18:40:00+00:00', '--job-id', '236', '--raw', '--subdir', 'DAGS_FOLDER/kafka_stream_dag.py', '--cfg-path', '/tmp/tmpkqxpg__3']
+[2025-11-28T18:45:17.440+0000] {standard_task_runner.py:91} INFO - Job 236: Subtask s3_bucket_health_check
+[2025-11-28T18:45:18.260+0000] {task_command.py:426} INFO - Running <TaskInstance: name_stream_dag.s3_bucket_health_check scheduled__2025-11-28T18:40:00+00:00 [running]> on host b7317ee550c5
+[2025-11-28T18:45:19.164+0000] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='name_stream_dag' AIRFLOW_CTX_TASK_ID='s3_bucket_health_check' AIRFLOW_CTX_EXECUTION_DATE='2025-11-28T18:40:00+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2025-11-28T18:40:00+00:00'
+[2025-11-28T18:45:19.165+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2025-11-28T18:45:19.213+0000] {credentials.py:1147} INFO - Found credentials in environment variables.
+[2025-11-28T18:45:19.995+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2025-11-28T18:45:19.997+0000] {taskinstance.py:2905} ERROR - Task failed with exception
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/taskinstance.py", line 465, in _execute_task
+    result = _execute_callable(context=context, **execute_callable_kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/taskinstance.py", line 432, in _execute_callable
+    return execute_callable(context=context, **execute_callable_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/models/baseoperator.py", line 401, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/operators/python.py", line 235, in execute
+    return_value = self.execute_callable()
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/airflow/operators/python.py", line 252, in execute_callable
+    return self.python_callable(*self.op_args, **self.op_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/kafka_stream_dag.py", line 53, in _check_bucket
+    s3.head_bucket(Bucket=bucket)
+  File "/home/airflow/.local/lib/python3.11/site-packages/botocore/client.py", line 565, in _api_call
+    return self._make_api_call(operation_name, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.11/site-packages/botocore/client.py", line 1021, in _make_api_call
+    raise error_class(parsed_response, operation_name)
+botocore.exceptions.ClientError: An error occurred (400) when calling the HeadBucket operation: Bad Request
+[2025-11-28T18:45:20.054+0000] {taskinstance.py:1206} INFO - Marking task as UP_FOR_RETRY. dag_id=name_stream_dag, task_id=s3_bucket_health_check, run_id=scheduled__2025-11-28T18:40:00+00:00, execution_date=20251128T184000, start_date=20251128T184516, end_date=20251128T184520
+[2025-11-28T18:45:20.376+0000] {standard_task_runner.py:110} ERROR - Failed to execute job 236 for task s3_bucket_health_check (An error occurred (400) when calling the HeadBucket operation: Bad Request; 121)
+[2025-11-28T18:45:20.428+0000] {local_task_job_runner.py:243} INFO - Task exited with return code 1
+[2025-11-28T18:45:20.514+0000] {taskinstance.py:3503} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2025-11-28T18:45:20.570+0000] {local_task_job_runner.py:222} INFO - ::endgroup::

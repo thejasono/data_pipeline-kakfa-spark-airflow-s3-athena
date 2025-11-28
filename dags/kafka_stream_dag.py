@@ -139,7 +139,7 @@ with DAG(
             "/opt/spark/app/spark_processing.py"
         ),
         network_mode="docker_streaming",
-        # env_file=".env.aws",  # <-- REMOVE THIS LINE COMPLETELY
+        mount_tmp_dir=False,   # <-- important for docker-in-docker / remote engine
         environment={
             # Kafka
             "KAFKA_BOOTSTRAP_SERVERS": "kafka:19092",
@@ -152,13 +152,14 @@ with DAG(
             "AWS_REGION": os.environ.get("AWS_REGION", "eu-west-2"),
 
             # App-specific config
-            "S3_BUCKET": "namegeneratorbucket",        # align with _check_bucket()
+            "S3_BUCKET": "namegeneratorbucket",
             "S3_OUTPUT_PREFIX": "names",
             "S3_CHECKPOINT_PREFIX": "checkpoints/names",
             "S3_REGION": "eu-west-2",
         },
         auto_remove=True,
     )
+
 
 
     # 5) Wiring: health checks → producer → Spark consumer

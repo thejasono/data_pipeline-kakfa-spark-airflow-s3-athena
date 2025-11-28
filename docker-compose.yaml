@@ -1,8 +1,10 @@
 
 networks:
   docker_streaming:
+    name: docker_streaming   # <-- force this exact name at Docker level
     driver: bridge
   kafka_network:
+    name: kafka_network      # (optional but consistent)
     driver: bridge
    # used by kafka:/var/lib/kafka/data
 

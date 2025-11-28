@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Optional, Tuple
 from urllib.parse import urlparse
-
+from datetime import datetime, timezone  # <-- add this
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType

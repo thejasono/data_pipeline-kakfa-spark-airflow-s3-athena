@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 FROM bitnamilegacy/spark:3.5.1
 
 USER root
@@ -13,6 +12,11 @@ RUN set -eux; \
     ln -s /usr/bin/python3 /usr/bin/python || true; \
     rm -rf /var/lib/apt/lists/*
 
+# Still root here – create app dir and copy code
+RUN mkdir -p /opt/spark/app
+COPY app/ /opt/spark/app/
+
+# Switch to non-root for the rest (spark default)
 USER 1001
 
 ARG KAFKA_CLIENT_VERSION=3.5.1

@@ -10,7 +10,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator  # for Option A (spark-submit inside Airflow)
 from airflow.providers.docker.operators.docker import DockerOperator  # for Option B (Spark container)
-
+from producer.kafka_streaming_service import ensure_topic, KAFKA_BOOTSTRAP, KAFKA_TOPIC
 # -------------------------------------------------------------------------
 # Callables used by tasks
 # -------------------------------------------------------------------------
@@ -28,30 +28,38 @@ def _trigger_stream() -> None:
 
 
 def _check_kafka() -> None:
-    """Fail fast if Kafka broker or topic is not ready."""
-    from confluent_kafka.admin import AdminClient
-
-    admin = AdminClient({"bootstrap.servers": "kafka:19092"})
-    md = admin.list_topics(timeout=5)
-
-    if "names_topic" not in md.topics:
-        raise RuntimeError("Kafka topic 'names_topic' is missing")
+    """Ensure Kafka broker is reachable and the topic exists."""
+    # This will no-op if the topic already exists
+    ensure_topic(KAFKA_BOOTSTRAP, KAFKA_TOPIC, num_partitions=1, replication_factor=1)
 
 
 def _check_bucket() -> None:
-    """Ensure MinIO/S3 bucket exists; create it if missing."""
-    from minio import Minio
+    """Ensure AWS S3 bucket exists; create it if missing."""
+    import os
+    import boto3
+    from botocore.exceptions import ClientError
 
-    client = Minio(
-        "minio:9000",
-        access_key="admin",
-        secret_key="adminadmin",
-        secure=False,
-    )
     bucket = "names-bucket"
-    if not client.bucket_exists(bucket):
-        client.make_bucket(bucket)
+    region = os.getenv("AWS_REGION", "eu-west-2")
 
+    s3 = boto3.client("s3", region_name=region)
+
+    try:
+        s3.head_bucket(Bucket=bucket)
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        # AWS returns string codes ("404", "NoSuchBucket", etc.)
+        if error_code in ("404", "NoSuchBucket"):
+            if region == "us-east-1":
+                s3.create_bucket(Bucket=bucket)
+            else:
+                s3.create_bucket(
+                    Bucket=bucket,
+                    CreateBucketConfiguration={"LocationConstraint": region},
+                )
+        else:
+            # Any other error → fail the task
+            raise
 
 # -------------------------------------------------------------------------
 # DAG default args and config
@@ -107,28 +115,33 @@ with DAG(
     # BashOperator spark_stream_task above.
     # -----------------------------------------------------------------
     spark_stream_task = DockerOperator(
-         task_id="spark_stream_to_s3",
-         image="custom-spark",  # same image as spark-master / spark_streaming
-         command=(
-             "/opt/bitnami/spark/bin/spark-submit "
-             "--master spark://spark-master:7077 "
-             "/opt/spark/app/spark_processing.py"
-         ),
-         network_mode="docker_streaming",  # must see kafka + minio + spark-master
-         environment={
-             "KAFKA_BOOTSTRAP_SERVERS": "kafka:19092",
-             "KAFKA_TOPIC": "names_topic",
-             "S3_BUCKET": "names-bucket",
-             "S3_OUTPUT_PREFIX": "names",
-             "S3_CHECKPOINT_PREFIX": "checkpoints/names",
-             "S3_REGION": "eu-west-2",
-             "S3_ENDPOINT": "http://minio:9000",
-             "S3_PATH_STYLE_ACCESS": "true",
-             "AWS_ACCESS_KEY_ID": "admin",
-             "AWS_SECRET_ACCESS_KEY": "adminadmin",
-         },
-         auto_remove=True,
-     )
+        task_id="spark_stream_to_s3",
+        image="custom-spark",
+        command=(
+            "/opt/bitnami/spark/bin/spark-submit "
+            "--master spark://spark-master:7077 "
+            "/opt/spark/app/spark_processing.py"
+        ),
+        network_mode="docker_streaming",
+        env_file=[".env.aws"],    # reuse same credentials
+        environment={
+            "KAFKA_BOOTSTRAP_SERVERS": "kafka:19092",
+            "KAFKA_TOPIC": "names_topic",
+            "S3_BUCKET": "names-bucket",
+            "S3_OUTPUT_PREFIX": "names",
+            "S3_CHECKPOINT_PREFIX": "checkpoints/names",
+
+            # Let Spark pick default AWS endpoint based on region/SDK config:
+            "S3_REGION": "eu-west-2",
+            # Drop these MinIO-specific settings:
+            # "S3_ENDPOINT": "http://minio:9000",
+            # "S3_PATH_STYLE_ACCESS": "true",
+            # And do NOT override AWS creds here,
+            # they come from .env.aws
+        },
+        auto_remove=True,
+    )
+
 
     # 5) Wiring: health checks → producer → Spark consumer
     kafka_health_check >> bucket_health_check >> kafka_stream_task >> spark_stream_task

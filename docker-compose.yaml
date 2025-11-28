@@ -57,7 +57,7 @@ services:
       - TZ=${TZ:-Europe/Berlin}
     user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
     env_file:
-    - .env.aw
+    - .env.aws
     command:
       - bash
       - -lc
@@ -103,7 +103,7 @@ services:
       - AIRFLOW_UID=${AIRFLOW_UID:-50000}
       - TZ=${TZ:-Europe/Berlin}
     env_file:
-    - .env.aw
+    - .env.aws
     user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
     command: ["bash","-lc","exec airflow webserver"]
     healthcheck:
@@ -130,7 +130,7 @@ services:
       airflow-init:
         condition: service_completed_successfully
     env_file:
-    - .env.aw
+    - .env.aws
     environment:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airflow_db:5432/${POSTGRES_DB}
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor

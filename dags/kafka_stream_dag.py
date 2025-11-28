@@ -11,6 +11,11 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator  # for Option A (spark-submit inside Airflow)
 from airflow.providers.docker.operators.docker import DockerOperator  # for Option B (Spark container)
 from producer.kafka_streaming_service import ensure_topic, KAFKA_BOOTSTRAP, KAFKA_TOPIC
+import os
+import boto3
+from botocore.exceptions import ClientError
+from airflow.exceptions import AirflowException
+
 # -------------------------------------------------------------------------
 # Callables used by tasks
 # -------------------------------------------------------------------------
@@ -34,22 +39,25 @@ def _check_kafka() -> None:
 
 
 def _check_bucket() -> None:
-    """Ensure AWS S3 bucket exists; create it if missing."""
-    import os
-    import boto3
-    from botocore.exceptions import ClientError
+    """Ensure AWS S3 bucket exists; create it if missing.
 
-    bucket = "names-bucket"
+    - 404 / NoSuchBucket: create the bucket in our region.
+    - 403 / AccessDenied: fail fast with clear message (name taken or no perms).
+    """
+    bucket = "namegeneratorbucket"
     region = os.getenv("AWS_REGION", "eu-west-2")
 
     s3 = boto3.client("s3", region_name=region)
 
     try:
         s3.head_bucket(Bucket=bucket)
+        # If we get here, bucket is accessible and exists; health check passes.
+        return
     except ClientError as e:
-        error_code = e.response["Error"]["Code"]
-        # AWS returns string codes ("404", "NoSuchBucket", etc.)
-        if error_code in ("404", "NoSuchBucket"):
+        code = e.response["Error"]["Code"]
+
+        # Bucket not found → we try to create it in our account.
+        if code in ("404", "NoSuchBucket", "NotFound"):
             if region == "us-east-1":
                 s3.create_bucket(Bucket=bucket)
             else:
@@ -57,11 +65,19 @@ def _check_bucket() -> None:
                     Bucket=bucket,
                     CreateBucketConfiguration={"LocationConstraint": region},
                 )
-        else:
-            # Any other error → fail the task
-            raise
+            return
 
-# -------------------------------------------------------------------------
+        # Access denied / forbidden: likely bucket name already taken or IAM blocked
+        if code in ("403", "AccessDenied"):
+            raise AirflowException(
+                f"S3 bucket health check failed: cannot access bucket '{bucket}' "
+                f"(HTTP {code}). The name may be taken by another account or your "
+                "IAM principal lacks s3:HeadBucket/ListBucket permissions."
+            ) from e
+
+        # Any other error: re-raise
+        raise
+
 # DAG default args and config
 # -------------------------------------------------------------------------
 
@@ -123,21 +139,23 @@ with DAG(
             "/opt/spark/app/spark_processing.py"
         ),
         network_mode="docker_streaming",
-        env_file=[".env.aws"],    # reuse same credentials
+        # env_file=".env.aws",  # <-- REMOVE THIS LINE COMPLETELY
         environment={
+            # Kafka
             "KAFKA_BOOTSTRAP_SERVERS": "kafka:19092",
             "KAFKA_TOPIC": "names_topic",
-            "S3_BUCKET": "names-bucket",
+
+            # S3 / AWS – forward from Airflow’s own environment
+            "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID", ""),
+            "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+            "AWS_SESSION_TOKEN": os.environ.get("AWS_SESSION_TOKEN", ""),
+            "AWS_REGION": os.environ.get("AWS_REGION", "eu-west-2"),
+
+            # App-specific config
+            "S3_BUCKET": "namegeneratorbucket",        # align with _check_bucket()
             "S3_OUTPUT_PREFIX": "names",
             "S3_CHECKPOINT_PREFIX": "checkpoints/names",
-
-            # Let Spark pick default AWS endpoint based on region/SDK config:
             "S3_REGION": "eu-west-2",
-            # Drop these MinIO-specific settings:
-            # "S3_ENDPOINT": "http://minio:9000",
-            # "S3_PATH_STYLE_ACCESS": "true",
-            # And do NOT override AWS creds here,
-            # they come from .env.aws
         },
         auto_remove=True,
     )

@@ -1,11 +1,16 @@
 # syntax=docker/dockerfile:1
-FROM  bitnamilegacy/spark:3.5.1
+FROM bitnamilegacy/spark:3.5.1
 
 USER root
 
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends curl; \
+    apt-get install -y --no-install-recommends \
+        curl \
+        python3 \
+        python3-pip \
+        python3-venv; \
+    ln -s /usr/bin/python3 /usr/bin/python || true; \
     rm -rf /var/lib/apt/lists/*
 
 USER 1001

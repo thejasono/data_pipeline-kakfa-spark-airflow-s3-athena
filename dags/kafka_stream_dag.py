@@ -7,8 +7,7 @@ from datetime import timedelta
 import pendulum
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator  # for Option A (spark-submit inside Airflow)
+from airflow.operators.python import PythonOperator  # for Option A (spark-submit inside Airflow)
 from airflow.providers.docker.operators.docker import DockerOperator  # for Option B (Spark container)
 from producer.kafka_streaming_service import ensure_topic, KAFKA_BOOTSTRAP, KAFKA_TOPIC
 import os
@@ -158,6 +157,7 @@ with DAG(
             "S3_REGION": "eu-west-2",
         },
         auto_remove=True,
+        execution_timeout=timedelta(minutes=5),
     )
 
 

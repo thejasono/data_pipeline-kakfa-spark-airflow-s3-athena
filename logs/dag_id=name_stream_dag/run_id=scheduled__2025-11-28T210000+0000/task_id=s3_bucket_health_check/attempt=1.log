@@ -1,0 +1,18 @@
+[2025-11-28T21:10:15.535+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2025-11-28T21:10:15.854+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: name_stream_dag.s3_bucket_health_check scheduled__2025-11-28T21:00:00+00:00 [queued]>
+[2025-11-28T21:10:15.919+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: name_stream_dag.s3_bucket_health_check scheduled__2025-11-28T21:00:00+00:00 [queued]>
+[2025-11-28T21:10:15.920+0000] {taskinstance.py:2306} INFO - Starting attempt 1 of 2
+[2025-11-28T21:10:16.154+0000] {taskinstance.py:2330} INFO - Executing <Task(PythonOperator): s3_bucket_health_check> on 2025-11-28 21:00:00+00:00
+[2025-11-28T21:10:16.221+0000] {standard_task_runner.py:64} INFO - Started process 130 to run task
+[2025-11-28T21:10:16.245+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'name_stream_dag', 's3_bucket_health_check', 'scheduled__2025-11-28T21:00:00+00:00', '--job-id', '351', '--raw', '--subdir', 'DAGS_FOLDER/kafka_stream_dag.py', '--cfg-path', '/tmp/tmpd4w55igb']
+[2025-11-28T21:10:16.260+0000] {standard_task_runner.py:91} INFO - Job 351: Subtask s3_bucket_health_check
+[2025-11-28T21:10:17.539+0000] {task_command.py:426} INFO - Running <TaskInstance: name_stream_dag.s3_bucket_health_check scheduled__2025-11-28T21:00:00+00:00 [running]> on host 3c6232649979
+[2025-11-28T21:10:21.058+0000] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='name_stream_dag' AIRFLOW_CTX_TASK_ID='s3_bucket_health_check' AIRFLOW_CTX_EXECUTION_DATE='2025-11-28T21:00:00+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2025-11-28T21:00:00+00:00'
+[2025-11-28T21:10:21.074+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2025-11-28T21:10:21.247+0000] {credentials.py:1147} INFO - Found credentials in environment variables.
+[2025-11-28T21:10:24.965+0000] {python.py:237} INFO - Done. Returned value was: None
+[2025-11-28T21:10:24.991+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2025-11-28T21:10:25.362+0000] {taskinstance.py:1206} INFO - Marking task as SUCCESS. dag_id=name_stream_dag, task_id=s3_bucket_health_check, run_id=scheduled__2025-11-28T21:00:00+00:00, execution_date=20251128T210000, start_date=20251128T211015, end_date=20251128T211025
+[2025-11-28T21:10:25.934+0000] {local_task_job_runner.py:243} INFO - Task exited with return code 0
+[2025-11-28T21:10:26.694+0000] {taskinstance.py:3503} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2025-11-28T21:10:26.946+0000] {local_task_job_runner.py:222} INFO - ::endgroup::

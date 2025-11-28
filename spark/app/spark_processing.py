@@ -245,7 +245,7 @@ def initiate_streaming_to_bucket(df: DataFrame, path: str, checkpoint_location: 
         .outputMode("append")
         .foreachBatch(_write_batch)
         .option("checkpointLocation", checkpoint_location)
-        .trigger(availableNow=True)  # <- key change
+        .trigger(availableNow=True)   # Spark 3.3+ — drain backlog then stop
         .start()
     )
 

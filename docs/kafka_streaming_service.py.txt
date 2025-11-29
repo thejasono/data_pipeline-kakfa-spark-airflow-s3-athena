@@ -1,0 +1,1438 @@
+kafka_streaming_service.py:
+
+"""
+kafka_streaming_service.py
+
+Tiny Kafka producer that fetches a user, normalizes it, and publishes to a topic
+every PAUSE_INTERVAL seconds for STREAMING_DURATION seconds.
+"""
+
+import json
+import time
+import hashlib
+import logging
+import random
+import uuid
+from typing import Dict, Any, Optional, TYPE_CHECKING
+
+import requests
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s:%(levelname)s:%(message)s",
+    )
+
+LOGGER = logging.getLogger(__name__)
+
+
+# Fallback data used if the API is unreachable.
+FALLBACK_LOCATIONS: tuple[dict[str, str], ...] = (
+    {"city": "London", "country": "United Kingdom", "street": "Baker Street", "postcode": "NW1 6XE", "latitude": "51.5237", "longitude": "-0.1585"},
+    {"city": "Berlin", "country": "Germany", "street": "Unter den Linden", "postcode": "10117", "latitude": "52.5163", "longitude": "13.3777"},
+    {"city": "Madrid", "country": "Spain", "street": "Gran Vía", "postcode": "28013", "latitude": "40.4203", "longitude": "-3.7058"},
+    {"city": "Toronto", "country": "Canada", "street": "Queen Street West", "postcode": "M5V", "latitude": "43.6470", "longitude": "-79.3948"},
+    {"city": "Sydney", "country": "Australia", "street": "George Street", "postcode": "2000", "latitude": "-33.8675", "longitude": "151.2070"},
+)
+
+FALLBACK_NAMES: dict[str, tuple[tuple[str, str], ...]] = {
+    "male": (("Mr", "Noah"), ("Mr", "Liam"), ("Dr", "Elijah"), ("Mr", "Mateo")),
+    "female": (("Ms", "Olivia"), ("Ms", "Emma"), ("Dr", "Ava"), ("Ms", "Sophia")),
+}
+
+FALLBACK_LAST_NAMES: tuple[str, ...] = ("Anderson", "Patel", "Kowalski", "Garcia", "Okafor", "Liu")
+
+
+def _fallback_user_data() -> Dict[str, Any]:
+    """Return a synthetic user when the API is unavailable."""
+    rng = random.Random(time.time_ns())
+    gender = rng.choice(tuple(FALLBACK_NAMES))
+    title, first = rng.choice(FALLBACK_NAMES[gender])
+    last = rng.choice(FALLBACK_LAST_NAMES)
+    location = rng.choice(FALLBACK_LOCATIONS)
+    street_number = rng.randint(1, 999)
+    email_suffix = rng.randint(10, 99)
+
+    return {
+        "gender": gender,
+        "name": {"title": title, "first": first, "last": last},
+        "location": {
+            "street": {"number": street_number, "name": location["street"]},
+            "city": location["city"],
+            "country": location["country"],
+            "postcode": location["postcode"],
+            "coordinates": {"latitude": location["latitude"], "longitude": location["longitude"]},
+        },
+        "email": f"{first.lower()}.{last.lower()}{email_suffix}@example.com",
+        "login": {"uuid": f"offline-{uuid.uuid4()}"},
+    }
+
+
+if TYPE_CHECKING:  # Only for type-checkers.
+    from confluent_kafka import Producer
+    from confluent_kafka.admin import AdminClient, NewTopic
+else:
+    Producer = Any
+
+
+def _require_confluent_kafka() -> tuple[Any, Any, Any]:
+    """Import confluent_kafka and raise a clear error if missing."""
+    try:
+        from confluent_kafka import Producer as _Producer
+        from confluent_kafka.admin import AdminClient as _AdminClient, NewTopic as _NewTopic
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "confluent_kafka is required. Install it where this script runs (e.g., `pip install confluent-kafka`)."
+        ) from exc
+    return _Producer, _AdminClient, _NewTopic
+
+
+# Connection targets:
+# - Inside Docker network → "kafka:19092"
+# - From host OS         → "localhost:9092"
+KAFKA_BOOTSTRAP = "kafka:19092"
+# KAFKA_BOOTSTRAP = "localhost:9092"
+
+API_ENDPOINT = "https://randomuser.me/api/?results=1"
+KAFKA_TOPIC = "names_topic"
+PAUSE_INTERVAL = 10
+STREAMING_DURATION = 120
+
+
+# ---------------- Stage 1 — Setup (topic) ----------------
+def ensure_topic(admin_bootstrap: str, topic: str, num_partitions: int = 1, replication_factor: int = 1) -> None:
+    """Create the topic if missing; no-op if it already exists."""
+    _, AdminClient, NewTopic = _require_confluent_kafka()
+    admin = AdminClient({"bootstrap.servers": admin_bootstrap})
+
+    md = admin.list_topics(timeout=5)
+    if topic in md.topics:
+        return
+
+    futures = admin.create_topics([NewTopic(topic, num_partitions=num_partitions, replication_factor=replication_factor)])
+    for t, f in futures.items():
+        try:
+            f.result()
+            print(f"Created topic: {t}")
+        except Exception as e:
+            print(f"Topic create warning for {t}: {e}")
+
+
+# ---------------- Stage 2 — Ingest (HTTP) ----------------
+def retrieve_user_data(url: str = API_ENDPOINT, retries: int = 3, timeout: int = 10) -> Dict[str, Any]:
+    """GET one random user; retry a few times; fall back to synthetic on repeated failure."""
+    last_exception: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status()
+            data = resp.json()
+            return data["results"][0]
+        except Exception as exc:
+            last_exception = exc
+            if attempt == retries:
+                LOGGER.warning("Failed to reach %s after %s attempts; using fallback.", url, retries, exc_info=exc)
+                break
+            time.sleep(1)
+    if last_exception is not None:
+        return _fallback_user_data()
+    raise RuntimeError("retrieve_user_data exited without data or exception")
+
+
+# ---------------- Stage 3 — Transform ----------------
+def safe_float(x: Any) -> Optional[float]:
+    """float(x) or None on failure."""
+    try:
+        return float(x)
+    except Exception:
+        return None
+
+
+def encrypt_zip(zip_code: Any) -> int:
+    """Hash postcode → int (deterministic pseudonym)."""
+    md5_hex = hashlib.md5(str(zip_code).encode("utf-8")).hexdigest()
+    return int(md5_hex, 16)
+    # For stronger privacy, prefer HMAC-SHA256 with a secret.
+
+
+def transform_user_data(d: Dict[str, Any]) -> Dict[str, Any]:
+    """Flatten/normalize API payload; cast coords; hash postcode."""
+    title = d["name"]["title"]
+    first = d["name"]["first"]
+    last = d["name"]["last"]
+    name = f"{title}. {first} {last}"
+
+    address = f"{d['location']['street']['number']}, {d['location']['street']['name']}"
+    city = d["location"]["city"]
+    nation = d["location"]["country"]
+    postcode_hashed = str(encrypt_zip(d["location"]["postcode"]))
+    lat = safe_float(d["location"]["coordinates"]["latitude"])
+    lon = safe_float(d["location"]["coordinates"]["longitude"])
+    email = d.get("email")
+
+    return {
+        "name": name,
+        "gender": d.get("gender"),
+        "address": address,
+        "city": city,
+        "nation": nation,
+        "zip": postcode_hashed,
+        "latitude": lat,
+        "longitude": lon,
+        "email": email,
+    }
+
+
+# ---------------- Stage 4 — Publish ----------------
+def build_producer(bootstrap: str) -> Producer:
+    """Build a Producer with idempotence, acks=all, light batching, and compression."""
+    conf = {
+        "bootstrap.servers": bootstrap,
+        "client.id": "producer_instance",
+        "acks": "all",
+        "enable.idempotence": True,
+        "compression.type": "gzip",
+        "linger.ms": 20,
+        "batch.size": 64_000,
+    }
+    ProducerCls, _, _ = _require_confluent_kafka()
+    return ProducerCls(conf)
+
+
+def delivery_status(err, msg):
+    """Per-message delivery report."""
+    if err is not None:
+        print("Delivery failed:", err)
+    else:
+        print(f"Delivered to {msg.topic()} [{msg.partition()}] @ offset {msg.offset()}")
+
+
+def publish_once(producer: Producer, topic: str, data: Dict[str, Any]) -> None:
+    """Serialize dict → JSON bytes and enqueue to Kafka."""
+    value = json.dumps(data).encode("utf-8")
+    LOGGER.info("Producing record to topic=%s payload=%s", topic, data)
+    producer.produce(
+        topic,
+        value=value,
+        on_delivery=delivery_status,
+    )
+    producer.poll(0)  # Drive I/O and callbacks.
+
+
+# ---------------- Orchestrator ----------------
+def initiate_stream() -> None:
+    """Run: ensure topic → build producer → loop(fetch→transform→produce) → flush."""
+    LOGGER.info(
+        "Starting Kafka stream: bootstrap=%s topic=%s interval=%s duration=%s",
+        KAFKA_BOOTSTRAP,
+        KAFKA_TOPIC,
+        PAUSE_INTERVAL,
+        STREAMING_DURATION,
+    )
+    ensure_topic(KAFKA_BOOTSTRAP, KAFKA_TOPIC, num_partitions=1, replication_factor=1)
+    producer = build_producer(KAFKA_BOOTSTRAP)
+
+    iterations = STREAMING_DURATION // PAUSE_INTERVAL
+    try:
+        for i in range(iterations):
+            raw = retrieve_user_data()
+            payload = transform_user_data(raw)
+            LOGGER.info("Iteration %s/%s – sending payload %s", i + 1, iterations, payload)
+            publish_once(producer, KAFKA_TOPIC, payload)
+            time.sleep(PAUSE_INTERVAL)
+    finally:
+        remaining = producer.flush(10)
+        if remaining:
+            LOGGER.warning("Flush timed out with %s message(s) still in queue.", remaining)
+        else:
+            LOGGER.info("Kafka producer flushed all pending messages.")
+
+
+if __name__ == "__main__":
+    initiate_stream()
+
+kafka_stream_dag.py:
+
+# -----------------------------------------------------------------------------
+# File: dags/kafka_stream_dag.py
+# Purpose: Run a short-lived Kafka streaming job on a schedule via Airflow.
+# -----------------------------------------------------------------------------
+
+from datetime import timedelta
+import pendulum
+
+from airflow import DAG
+from airflow.operators.python import PythonOperator  # for Option A (spark-submit inside Airflow)
+from airflow.providers.docker.operators.docker import DockerOperator  # for Option B (Spark container)
+from producer.kafka_streaming_service import ensure_topic, KAFKA_BOOTSTRAP, KAFKA_TOPIC
+import os
+import boto3
+from botocore.exceptions import ClientError
+from airflow.exceptions import AirflowException
+
+# -------------------------------------------------------------------------
+# Callables used by tasks
+# -------------------------------------------------------------------------
+
+
+def _trigger_stream() -> None:
+    """Import and run the Kafka streaming helper at task runtime.
+
+    Importing inside the callable keeps the DAG importable even if optional
+    runtime dependencies (e.g., ``confluent_kafka``) are missing when the
+    scheduler parses the file.
+    """
+    from producer.kafka_streaming_service import initiate_stream
+    initiate_stream()
+
+
+def _check_kafka() -> None:
+    """Ensure Kafka broker is reachable and the topic exists."""
+    # This will no-op if the topic already exists
+    ensure_topic(KAFKA_BOOTSTRAP, KAFKA_TOPIC, num_partitions=1, replication_factor=1)
+
+
+def _check_bucket() -> None:
+    """Ensure AWS S3 bucket exists; create it if missing.
+
+    - 404 / NoSuchBucket: create the bucket in our region.
+    - 403 / AccessDenied: fail fast with clear message (name taken or no perms).
+    """
+    bucket = "namegeneratorbucket"
+    region = os.getenv("AWS_REGION", "eu-west-2")
+
+    s3 = boto3.client("s3", region_name=region)
+
+    try:
+        s3.head_bucket(Bucket=bucket)
+        # If we get here, bucket is accessible and exists; health check passes.
+        return
+    except ClientError as e:
+        code = e.response["Error"]["Code"]
+
+        # Bucket not found → we try to create it in our account.
+        if code in ("404", "NoSuchBucket", "NotFound"):
+            if region == "us-east-1":
+                s3.create_bucket(Bucket=bucket)
+            else:
+                s3.create_bucket(
+                    Bucket=bucket,
+                    CreateBucketConfiguration={"LocationConstraint": region},
+                )
+            return
+
+        # Access denied / forbidden: likely bucket name already taken or IAM blocked
+        if code in ("403", "AccessDenied"):
+            raise AirflowException(
+                f"S3 bucket health check failed: cannot access bucket '{bucket}' "
+                f"(HTTP {code}). The name may be taken by another account or your "
+                "IAM principal lacks s3:HeadBucket/ListBucket permissions."
+            ) from e
+
+        # Any other error: re-raise
+        raise
+
+# DAG default args and config
+# -------------------------------------------------------------------------
+
+LOCAL_TZ = pendulum.timezone("Europe/London")
+DAG_START_DATE = pendulum.datetime(2024, 1, 1, 0, 0, tz=LOCAL_TZ)
+
+DEFAULT_ARGS = {
+    "owner": "airflow",
+    "start_date": DAG_START_DATE,
+    "retries": 1,
+    "retry_delay": timedelta(seconds=5),
+}
+
+# -------------------------------------------------------------------------
+# DAG DEFINITION
+# -------------------------------------------------------------------------
+
+with DAG(
+    dag_id="name_stream_dag",
+    description="Stream random names to Kafka and land them in S3 via Spark",
+    default_args=DEFAULT_ARGS,
+    schedule="*/5 * * * *",
+    catchup=False,
+    max_active_runs=1,
+    tags=["kafka", "streaming", "demo"],
+) as dag:
+
+    # 1) Kafka health check
+    kafka_health_check = PythonOperator(
+        task_id="kafka_health_check",
+        python_callable=_check_kafka,
+    )
+
+    # 2) S3 / MinIO bucket health check
+    bucket_health_check = PythonOperator(
+        task_id="s3_bucket_health_check",
+        python_callable=_check_bucket,
+    )
+
+    # 3) Kafka producer (existing logic)
+    kafka_stream_task = PythonOperator(
+        task_id="stream_to_kafka_task",
+        python_callable=_trigger_stream,
+    )
+
+    # 4) Spark consumer: choose ONE of the following implementations
+
+    # -----------------------------------------------------------------
+    #  DockerOperator (Spark runs in its own container)
+    # Uncomment this block *and* the import at the top, then delete the
+    # BashOperator spark_stream_task above.
+    # -----------------------------------------------------------------
+    spark_stream_task = DockerOperator(
+        task_id="spark_stream_to_s3",
+        image="custom-spark",
+        command=(
+            "/opt/bitnami/spark/bin/spark-submit "
+            "--master spark://spark-master:7077 "
+            "/opt/spark/app/spark_processing.py"
+        ),
+        network_mode="docker_streaming",
+        mount_tmp_dir=False,   # <-- important for docker-in-docker / remote engine
+        environment={
+            # Kafka
+            "KAFKA_BOOTSTRAP_SERVERS": "kafka:19092",
+            "KAFKA_TOPIC": "names_topic",
+
+            # S3 / AWS – forward from Airflow’s own environment
+            "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID", ""),
+            "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+            "AWS_SESSION_TOKEN": os.environ.get("AWS_SESSION_TOKEN", ""),
+            "AWS_REGION": os.environ.get("AWS_REGION", "eu-west-2"),
+
+            # App-specific config
+            "S3_BUCKET": "namegeneratorbucket",
+            "S3_OUTPUT_PREFIX": "names",
+            "S3_CHECKPOINT_PREFIX": "checkpoints/names",
+            "S3_REGION": "eu-west-2",
+        },
+        auto_remove=True,
+        execution_timeout=timedelta(minutes=5),
+    )
+
+
+
+    # 5) Wiring: health checks → producer → Spark consumer
+    kafka_health_check >> bucket_health_check >> kafka_stream_task >> spark_stream_task
+
+Dockerfile.airflow:
+
+FROM apache/airflow:2.9.3-python3.11
+
+ARG AIRFLOW_VERSION=2.9.3
+ARG PYTHON_MAJOR_MINOR=3.11
+ARG AIRFLOW_CONSTRAINTS_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_MAJOR_MINOR}.txt"
+
+USER airflow
+COPY --chown=airflow:airflow requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir \
+        --constraint "${AIRFLOW_CONSTRAINTS_URL}" \
+        -r /tmp/requirements.txt \
+    && rm -f /tmp/requirements.txt
+
+
+spark_processing.py
+
+import logging
+import os
+from typing import Optional, Tuple
+from urllib.parse import urlparse
+from datetime import datetime, timezone
+
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.functions import from_json, col
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s:%(name)s:%(funcName)s:%(levelname)s:%(message)s",
+)
+logger = logging.getLogger("spark_structured_streaming")
+
+
+def _configure_s3_credentials(
+    builder: SparkSession.Builder,
+    access_key: str,
+    secret_key: str,
+    session_token: Optional[str] = None,
+) -> SparkSession.Builder:
+    """Apply static AWS credentials to a Spark builder."""
+    provider = "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider"
+    if session_token:
+        provider = "org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider"
+
+    builder = (
+        builder
+        .config("spark.hadoop.fs.s3a.aws.credentials.provider", provider)
+        .config("spark.hadoop.fs.s3a.access.key", access_key)
+        .config("spark.hadoop.fs.s3a.secret.key", secret_key)
+    )
+
+    if session_token:
+        builder = builder.config("spark.hadoop.fs.s3a.session.token", session_token)
+
+    return builder
+
+
+def _normalize_s3_endpoint(raw: Optional[str]) -> Tuple[str, Optional[bool]]:
+    """Split an S3 endpoint into host[:port] and SSL preference.
+
+    Examples:
+    - 's3.eu-west-2.amazonaws.com'     -> ('s3.eu-west-2.amazonaws.com', None)
+    - 'http://minio:9000'              -> ('minio:9000', False)
+    - 'https://s3.eu-west-2.amazonaws.com' -> ('s3.eu-west-2.amazonaws.com', True)
+    """
+    if raw is None:
+        raise ValueError("S3 endpoint is required when normalization is requested")
+
+    value = raw.strip()
+    if not value:
+        raise ValueError("S3 endpoint cannot be empty or whitespace")
+
+    # No scheme → treat as host[:port]
+    if "://" not in value:
+        if any(ch in value for ch in "/?#"):
+            raise ValueError("S3 endpoint without scheme must not contain paths or queries")
+        return value, None
+
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError(f"Unsupported S3 endpoint scheme: {parsed.scheme}")
+    if not parsed.hostname:
+        raise ValueError("S3 endpoint must include a hostname")
+    if parsed.path not in {"", None}:
+        raise ValueError("S3 endpoint must not include a path component")
+    if parsed.params or parsed.query or parsed.fragment:
+        raise ValueError("S3 endpoint must not include params, query or fragment")
+
+    host = parsed.netloc
+    ssl_enabled = parsed.scheme == "https"
+    return host, ssl_enabled
+
+
+def initialize_spark_session(
+    app_name: str,
+    *,
+    region: str,
+    access_key: Optional[str] = None,
+    secret_key: Optional[str] = None,
+    session_token: Optional[str] = None,
+    endpoint: Optional[str] = None,
+    path_style: Optional[bool] = None,
+    ssl_enabled: Optional[bool] = None,
+) -> SparkSession:
+    """Create a SparkSession with optional static AWS credentials."""
+    builder = SparkSession.builder.appName(app_name)
+
+    if access_key and secret_key:
+        builder = _configure_s3_credentials(builder, access_key, secret_key, session_token)
+    else:
+        builder = builder.config(
+            "spark.hadoop.fs.s3a.aws.credentials.provider",
+            "com.amazonaws.auth.DefaultAWSCredentialsProviderChain",
+        )
+
+    builder = builder.config("spark.hadoop.fs.s3a.region", region)
+
+    if endpoint:
+        builder = builder.config("spark.hadoop.fs.s3a.endpoint", endpoint)
+
+        # Default path-style for non-AWS endpoints (e.g. MinIO)
+        if path_style is None:
+            path_style = "amazonaws.com" not in endpoint.lower()
+
+    if path_style is not None:
+        builder = builder.config(
+            "spark.hadoop.fs.s3a.path.style.access",
+            str(bool(path_style)).lower(),
+        )
+
+    if ssl_enabled is not None:
+        builder = builder.config(
+            "spark.hadoop.fs.s3a.connection.ssl.enabled",
+            "true" if ssl_enabled else "false",
+        )
+
+    try:
+        spark = builder.getOrCreate()
+        spark.sparkContext.setLogLevel("ERROR")
+        return spark
+    except Exception:
+        logger.exception("Spark session initialization failed")
+        raise
+
+
+def get_streaming_dataframe(spark: SparkSession, brokers: str, topic: str) -> DataFrame:
+    """Define a Kafka streaming DataFrame (unbounded table)."""
+    return (
+        spark.readStream
+        .format("kafka")
+        .option("kafka.bootstrap.servers", brokers)
+        .option("subscribe", topic)
+        .option("startingOffsets", "earliest")
+        .option("failOnDataLoss", "false")
+        .load()
+    )
+
+
+def transform_streaming_data(df: DataFrame) -> DataFrame:
+    """Cast Kafka value→STRING, parse JSON to typed columns."""
+    schema = StructType(
+        [
+            StructField("name", StringType(), True),
+            StructField("gender", StringType(), True),
+            StructField("address", StringType(), True),
+            StructField("city", StringType(), True),
+            StructField("nation", StringType(), True),
+            StructField("zip", StringType(), True),  # keep as STRING
+            StructField("latitude", DoubleType(), True),
+            StructField("longitude", DoubleType(), True),
+            StructField("email", StringType(), True),
+        ]
+    )
+    return (
+        df.selectExpr("CAST(value AS STRING) AS json_str")
+        .select(from_json(col("json_str"), schema).alias("data"))
+        .select("data.*")
+    )
+
+
+def s3_healthcheck_write(spark: SparkSession, path: str) -> None:
+    """
+    Perform a small healthcheck against S3A by creating a marker file:
+
+        {path}/healthcheck/_SUCCESS
+
+    where {path} is e.g. "s3a://namegeneratorbucket/names".
+    """
+    base = path.rstrip("/")                 # s3a://bucket/names
+    health_dir = f"{base}/healthcheck"      # s3a://bucket/names/healthcheck
+    marker = f"{health_dir}/_SUCCESS"       # s3a://bucket/names/healthcheck/_SUCCESS"
+
+    ts = datetime.now(timezone.utc).isoformat()
+    logger.info("Running S3 healthcheck, writing marker to %s", marker)
+
+    try:
+        jvm = spark._jvm
+        hadoop_conf = spark.sparkContext._jsc.hadoopConfiguration()
+        Path = jvm.org.apache.hadoop.fs.Path
+
+        health_dir_path = Path(health_dir)
+        marker_path = Path(marker)
+
+        # Get the correct FS implementation for the s3a:// path, not the default FS
+        fs = marker_path.getFileSystem(hadoop_conf)
+
+        # Ensure the "directory" prefix exists (harmless for S3A)
+        fs.mkdirs(health_dir_path)
+
+        # Create / overwrite the marker file and write a simple payload
+        out_stream = fs.create(marker_path, True)  # True = overwrite if exists
+        payload = f"OK {ts}\n".encode("utf-8")
+        out_stream.write(payload)
+        out_stream.close()
+
+        logger.info("S3 healthcheck marker successfully written at %s", marker)
+    except Exception:
+        logger.exception("S3 healthcheck FAILED while writing marker to %s", marker)
+        raise
+
+
+
+
+def initiate_streaming_to_bucket(df: DataFrame, path: str, checkpoint_location: str) -> None:
+    """Start JSON streaming sink with checkpointing and per-batch logging (finite run)."""
+    logger.info(
+        "Starting streaming sink (JSON, availableNow) to path=%s with checkpoint=%s",
+        path,
+        checkpoint_location,
+    )
+
+    def _write_batch(batch_df: DataFrame, batch_id: int) -> None:
+        count = batch_df.count()
+        ts = datetime.now(timezone.utc).isoformat()
+
+        logger.info(
+            "Batch %s: about to write %s record(s) to %s at %s",
+            batch_id,
+            count,
+            path,
+            ts,
+        )
+
+        (
+            batch_df.write
+            .mode("append")
+            .format("json")
+            .save(path)
+        )
+
+        logger.info(
+            "Batch %s: successfully wrote %s record(s) to %s at %s",
+            batch_id,
+            count,
+            path,
+            ts,
+        )
+
+    query = (
+        df.writeStream
+        .outputMode("append")
+        .foreachBatch(_write_batch)
+        .option("checkpointLocation", checkpoint_location)
+        .trigger(availableNow=True)   # Spark 3.3+ — drain backlog then stop
+        .start()
+    )
+
+    logger.info("Streaming query (availableNow) started; waiting for backlog to be processed.")
+    query.awaitTermination()
+    logger.info("Streaming query (availableNow) completed and terminated.")
+
+
+
+def main() -> None:
+    """End-to-end: Spark init → Kafka read → JSON parse → JSON sink (AWS S3)."""
+    app_name = "spark_streaming"
+
+    brokers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:19092")
+    topic = os.environ.get("KAFKA_TOPIC", "names_topic")
+
+    bucket = os.environ.get("S3_BUCKET")
+    if not bucket:
+        raise RuntimeError("S3_BUCKET is required")
+
+    output_prefix = os.environ.get("S3_OUTPUT_PREFIX", "names").strip("/")
+    checkpoint_prefix = (
+        os.environ.get("S3_CHECKPOINT_PREFIX") or f"checkpoints/{output_prefix}"
+    ).strip("/")
+
+    path = f"s3a://{bucket}/{output_prefix}"
+    checkpoint_location = f"s3a://{bucket}/{checkpoint_prefix}"
+
+    s3_region = os.environ.get("S3_REGION") or os.environ.get("AWS_REGION") or "eu-west-2"
+
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    session_token = os.environ.get("AWS_SESSION_TOKEN")
+
+    endpoint_host = None
+    ssl_pref = None
+    endpoint_raw = os.environ.get("S3_ENDPOINT")
+    if endpoint_raw:
+        endpoint_host, ssl_pref = _normalize_s3_endpoint(endpoint_raw)
+
+    path_style_env = os.environ.get("S3_PATH_STYLE_ACCESS")
+    path_style = None
+    if path_style_env is not None:
+        path_style = path_style_env.lower() in {"1", "true", "yes", "on"}
+
+    logger.info(
+        "Spark streaming config: app_name=%s brokers=%s topic=%s bucket=%s "
+        "output_prefix=%s checkpoint_prefix=%s region=%s endpoint=%s "
+        "path_style=%s ssl_enabled=%s",
+        app_name,
+        brokers,
+        topic,
+        bucket,
+        output_prefix,
+        checkpoint_prefix,
+        s3_region,
+        endpoint_host,
+        path_style,
+        ssl_pref,
+    )
+
+    spark = initialize_spark_session(
+        app_name,
+        region=s3_region,
+        access_key=access_key,
+        secret_key=secret_key,
+        session_token=session_token,
+        endpoint=endpoint_host,
+        path_style=path_style,
+        ssl_enabled=ssl_pref,
+    )
+
+    try:
+        # Optional explicit S3 connectivity check (can be removed if undesired)
+        s3_healthcheck_write(spark, path)
+
+        df = get_streaming_dataframe(spark, brokers, topic)
+        transformed_df = transform_streaming_data(df)
+        initiate_streaming_to_bucket(transformed_df, path, checkpoint_location)
+    finally:
+        logger.info("Stopping Spark session.")
+        spark.stop()
+
+
+if __name__ == "__main__":
+    main()
+
+
+Dockerfile(spark):
+
+FROM bitnamilegacy/spark:3.5.1
+
+USER root
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        curl \
+        python3 \
+        python3-pip \
+        python3-venv; \
+    ln -s /usr/bin/python3 /usr/bin/python || true; \
+    rm -rf /var/lib/apt/lists/*
+
+# Still root here – create app dir and copy code
+RUN mkdir -p /opt/spark/app
+COPY app/ /opt/spark/app/
+
+# Switch to non-root for the rest (spark default)
+USER 1001
+
+ARG KAFKA_CLIENT_VERSION=3.5.1
+ARG SPARK_KAFKA_VERSION=3.5.1
+ARG SCALA_BINARY_VERSION=2.12
+ARG COMMONS_POOL_VERSION=2.12.0
+
+RUN set -eux; \
+    cd /opt/bitnami/spark/jars; \
+    curl -fSLo kafka-clients-${KAFKA_CLIENT_VERSION}.jar \
+      https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/${KAFKA_CLIENT_VERSION}/kafka-clients-${KAFKA_CLIENT_VERSION}.jar; \
+    curl -fSLo spark-sql-kafka-0-10_${SCALA_BINARY_VERSION}-${SPARK_KAFKA_VERSION}.jar \
+      https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_${SCALA_BINARY_VERSION}/${SPARK_KAFKA_VERSION}/spark-sql-kafka-0-10_${SCALA_BINARY_VERSION}-${SPARK_KAFKA_VERSION}.jar; \
+    curl -fSLo spark-token-provider-kafka-0-10_${SCALA_BINARY_VERSION}-${SPARK_KAFKA_VERSION}.jar \
+      https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_${SCALA_BINARY_VERSION}/${SPARK_KAFKA_VERSION}/spark-token-provider-kafka-0-10_${SCALA_BINARY_VERSION}-${SPARK_KAFKA_VERSION}.jar; \
+    curl -fSLo commons-pool2-${COMMONS_POOL_VERSION}.jar \
+      https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/${COMMONS_POOL_VERSION}/commons-pool2-${COMMONS_POOL_VERSION}.jar
+
+env:
+
+###############################################################################
+# AIRFLOW / POSTGRES
+###############################################################################
+# Airflow credentials
+AIRFLOW_ADMIN_USER=admin
+AIRFLOW_ADMIN_PASSWORD=admin
+AIRFLOW_ADMIN_EMAIL=admin@example.com
+AIRFLOW_ADMIN_FN=Admin
+AIRFLOW_ADMIN_LN=User
+# Postgres credentials for Airflow metadata DB (created on first run).
+POSTGRES_USER=airflow
+POSTGRES_PASSWORD=airflow
+POSTGRES_DB=airflow_db
+
+# Airflow Fernet key: used to encrypt connections/variables.
+# Generate once (keep it secret):
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+AIRFLOW_FERNET_KEY=aGkWp9C_Gb8Y8QVR8nZo9VgYZpqsU-QKrNWawW0TUkQ=
+
+# Airflow Webserver secret key: signs session cookies and log fetch requests.
+# Generate a long random string once (example below is placeholder-quality only).
+#   python -c "import secrets; print(secrets.token_urlsafe(32))"
+AIRFLOW_SECRET_KEY=MnMf4q4zeBcT4RLTZK4lwE_jLsFq634ZPg5eUvvX-GORk-0Ay__LRX1VgCv4GYTB6tkTxEaDhIfTmxOobOun7A
+
+
+# Container timezone (logs, schedulers, Spark UI etc.)
+TZ=Europe/London
+
+
+###############################################################################
+# KAFKA (KRaft mode — NO ZooKeeper)
+###############################################################################
+# Cluster ID is REQUIRED in KRaft. Generate a Base64 UUID once:
+#   docker run --rm confluentinc/cp-kafka:7.6.1 kafka-storage random-uuid
+# Use the same value across all Kafka nodes (if you scale later).
+
+# Hostname/IP your *host* clients use to reach Kafka (EXTERNAL listener).
+# Usually "localhost". If connecting from another machine, put your LAN IP/DNS.
+DOCKER_HOST_IP=localhost
+
+
+###############################################################################
+# KAFKA CONNECT (managed connectors)
+###############################################################################
+# Connect talks to Kafka via INTERNAL listener (inside Docker).
+CONNECT_BOOTSTRAP_SERVERS=kafka:19092
+
+# REST API port for managing connectors.
+CONNECT_REST_PORT=8083
+
+# Internal housekeeping topics and consumer group for Connect itself.
+# For a single-node dev cluster these names are fine.
+CONNECT_GROUP_ID=connect-cluster
+CONNECT_CONFIG_STORAGE_TOPIC=_connect-configs
+CONNECT_OFFSET_STORAGE_TOPIC=_connect-offsets
+CONNECT_STATUS_STORAGE_TOPIC=_connect-status
+
+# Converters: JSON is dead-simple for dev. Disable schemas to avoid the
+# {"schema":...,"payload":...} wrapper (schemaless JSON is easier to eyeball).
+CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
+CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false
+CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+
+# Where Connect looks for connector plugins (leave as is unless you add custom jars).
+CONNECT_PLUGIN_PATH=/usr/share/java,/etc/kafka-connect/jars
+
+# Tame the logs a bit.
+CONNECT_LOG4J_ROOT_LOGLEVEL=INFO
+CONNECT_LOG4J_LOGGERS=org.reflections=ERROR
+
+
+###############################################################################
+# SCHEMA REGISTRY (optional but useful if you move to Avro/Protobuf)
+###############################################################################
+# With KRaft, SR talks directly to Kafka via bootstrap servers.
+SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka:19092
+SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL=PLAINTEXT
+SCHEMA_REGISTRY_HOST_NAME=kafka_schema_registry
+SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081
+
+
+###############################################################################
+# KAFKA UI (Provectus)
+###############################################################################
+# Define a single visible cluster in the UI using INTERNAL listener.
+KAFKA_CLUSTERS_0_NAME=dev-cluster
+KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:19092
+KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://kafka_schema_registry:8081
+KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME=connect
+KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=http://kafka_connect:8083
+KAFKA_CLUSTER_ID=iYgu3u24SuubQAOBhnUjFg
+# Allow editing clusters in the UI at runtime (handy in dev).
+DYNAMIC_CONFIG_ENABLED=true
+
+
+###############################################################################
+# SPARK (Master)
+###############################################################################
+# These match the compose; included here for visibility.
+SPARK_MODE=master
+SPARK_RPC_AUTHENTICATION_ENABLED=no
+SPARK_RPC_ENCRYPTION_ENABLED=no
+# Spark UI inside the container is 8080; compose maps it to host 8085.
+# (No need to set SPARK_UI_PORT unless you change the container port)
+
+
+###############################################################################
+# MINIO (local S3-compatible object storage)
+###############################################################################
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
+MINIO_SERVER_PORT=9000
+MINIO_CONSOLE_PORT=9001
+# The bootstrap helper container now derives its bucket target from S3_BUCKET,
+# so keep S3_BUCKET updated instead of editing a separate MINIO_BUCKET value.
+
+
+###############################################################################
+# SHARED OBJECT STORAGE SETTINGS (used by Spark streaming job)
+###############################################################################
+
+S3_BUCKET=namegeneratorbucket
+S3_OUTPUT_PREFIX=names
+S3_CHECKPOINT_PREFIX=checkpoints/names
+S3_REGION=eu-west-2
+# Leave blank to use the standard AWS endpoint derived from the region.
+S3_ENDPOINT=https://s3.eu-west-2.amazonaws.com
+# Set to "true" only when targeting gateways that require path-style access.
+S3_PATH_STYLE_ACCESS=
+
+
+###############################################################################
+# LOCAL USER MAPPING FOR AIRFLOW CONTAINERS
+###############################################################################
+# Match the container user/group with the host to avoid permission errors.
+# Update AIRFLOW_UID if running as a non-root user (e.g. run: echo "AIRFLOW_UID=$(id -u)" >> .env).
+AIRFLOW_UID=50000
+AIRFLOW_GID=0
+
+
+# Spark inherits AWS credentials from the container environment. Provide
+# long-lived access keys here only if you are not relying on the default AWS
+# credential chain (for example, when running on a standalone Docker host
+# without IAM roles). Leave these blank to defer to `~/.aws` profiles or
+# instance metadata.
+
+AWS_REGION=eu-west-2
+AWS_ACCESS_KEY_ID=ASIATVK4PTVJSOYVBKA2
+AWS_SECRET_ACCESS_KEY=GT6sjMNnJrWz6lrze1qXT+/m6qSMGunjaQAMmzR5
+AWS_SESSION_TOKEN=IQoJb3JpZ2luX2VjEBsaCWV1LXdlc3QtMiJHMEUCID5QIlBUGxEsLRZCR5Kx3/twe1JA/fShxLH8TLOe6zu6AiEA86uwyymnyhBQcVbfqkeR6xi1BcRjWJFziS71/3hYQ4Eq+gIItP//////////ARAAGgwyNTE5ODY0MTkwMjciDAqK7sWRvFFOAEGOQSrOApd0dvnk5lQpQ6bJwJ5Xs5sOPN/4hPXvdKWiEW2Jg5ANu3O9l0dh+XHRNkIbPgUA1YS1Yi4eUa3mheROOUVieCkLXTwiXPN8ckQMIR+b/30AFakXMAGwY76AmhARlK0y/WH6WmdNoE/5AVqTD/WNQ/dXaac1ZfuwgGOTUauzcKGXJgNwET110RNq2heO2aGkj3O/Ol+Esn7i0dGy5MwUpVvIxo+g2CqYa9ol8bzzVzyxNcE9tBVfQX0MZX0n3CPzOg4wPQzjANVHCfuc+WVe6P0Nb7msPvCP6B5VwI3rBGvvhF+xsr06gAf19XqdrheriervCKyVjXwP3CygxbChN7Jes9OnLcoxsYCco3o49aEC4NLvOAIDCLi9O6LseyxeuVD9uuH9iVBtWrtitO+HWWwLphQDI8cqwKCWXoAzYlg42sjopZiTJOC4xG+i/6YwtpiXxwY6pwHnu8fY7VyKoh2wXStq6hhNTlk7UOlW/NVPr0SeTORm6/OsZIPiz4tdONq3VG0+ZOE3f2mokqB0TAg9x5EZyzhqP90C7d8DURr5aDbeahgE4e5idbhvfUUSJCnyZxQqBM7yXcvbh4RP1KGjWe679p7lx3J8WN4Rvu/DcgP7VvRRJSoJdpAOGYikxHOxykW2EBe0yjuUGQdKalKKt6ThPmif6hPPRUiLhQ==
+AWS_CREDENTIAL_EXPIRATION=2025-10-08T03:28:05+00:00
+
+.env.aws:
+
+AWS_REGION=eu-west-2
+AWS_ACCESS_KEY_ID=ASIATVK4PTVJYGU5ESYZ
+AWS_SECRET_ACCESS_KEY=5ewh6WGrss/S3csIo/gCFocfW0+e9fZvAk0k0Q5P
+AWS_SESSION_TOKEN=IQoJb3JpZ2luX2VjEPb//////////wEaCWV1LXdlc3QtMiJIMEYCIQCrt04qU4vG/F3OQvqZd3mlSRwjBTFZZNsSwMId/9PQTwIhAL/uluo8zw/GlZ0RU2dYNRITZVlG3omXuO/FNGweh0G3KvwCCL///////////wEQABoMMjUxOTg2NDE5MDI3Igz/+QKxeQW0O/0aORUq0ALO3tO7ZJQ8Lqsi4QGLBr+DuHtoP57hO4iRCAjgwil16yDQ34XQyCmqHC8BVZnd9Cb7XUKoLoqF7zLCgFVbKlGMwwgD0/u8rh3GAzQ9zpUgXj48S4uLo4ZT3wNFNyO98xmeaUBte3lh/lJAS7yLol/b+ySgUlxKr6Vm94U3dLggqE+0ztQ07/z7gToIRSueVog4lg4QHe6goRc8Yf++qRGSIIvCHdhRrGOKjjbPFxxsRNYt58nNdrCewUED7vKXvSsRPby2EkLesoxTJid9bibG4asSKfdI5e3xotI2ECL1Ypa4PNtTe6xY1FhQDDbHzU7M/K+6LKFuLjww3qPTWpToDMuqby+TP1XVgTDaKL/JKn+I+ooqrljDAFxi3xUYlglKr2PiTB5saBi+BMTxqBeqpabkWsXZ7NlRnYeyWl8bx5QC8rwXrE2FqxFsgyaoJiIw8LKoyQY6pAFBvF9jncws/nD0rMRXyl7q5v/o6Q5cCT3dAF3wz169/0ofxYaOwFCVmG2OoWlFrxr4lGleDKUl1zCrGwF6/aSb2MKUE3g2UI9mmMp2HQgrBwwdsvuwhVfzFpqUcIj394kICaZFLYegBxOOhkJ/19yra5D2P6WhTZvv14Sv29d3mOAZJx9Bei9eoa+VeIKQsHbja5S4CiHBxKmWYlo1lj+lVqBXAA==
+AWS_CREDENTIAL_EXPIRATION=
+
+
+Docker-Compsoe.yaml:
+
+
+networks:
+  docker_streaming:
+    name: docker_streaming   # <-- force this exact name at Docker level
+    driver: bridge
+  kafka_network:
+    name: kafka_network      # (optional but consistent)
+    driver: bridge
+   # used by kafka:/var/lib/kafka/data
+
+x-airflow-image: &airflow-image custom-airflow:2.9.3-python3.11
+x-airflow-build: &airflow-build
+  context: .
+  dockerfile: Dockerfile.airflow
+
+
+
+services:
+
+  airflow_db:
+    image: postgres:16.0
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}          # e.g., airflow
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}  # e.g., airflow
+      - POSTGRES_DB=${POSTGRES_DB}              # e.g., airflow_db
+    volumes:
+      - ./airflow_pgdata:/var/lib/postgresql/data
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 10
+    networks:
+      - docker_streaming
+
+  # ==========================================================================
+  #  APACHE AIRFLOW (Webserver only, LocalExecutor)
+  #  - For a real setup you'd often run: webserver + scheduler (+ workers on Celery/K8s)
+  #  - Note: LocalExecutor still needs the Scheduler service running to execute tasks.
+  # ==========================================================================
+
+  airflow-init:
+    image: *airflow-image
+    build: *airflow-build             # <-- ONLY HERE
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airflow_db:5432/${POSTGRES_DB}
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Berlin
+      - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - TZ=${TZ:-Europe/Berlin}
+    user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
+    env_file:
+    - .env.aws
+    command:
+      - bash
+      - -lc
+      - |
+        set -euo pipefail
+        airflow db migrate
+        airflow users create \
+          --role Admin \
+          --username "${AIRFLOW_ADMIN_USER:-admin}" \
+          --email "${AIRFLOW_ADMIN_EMAIL:-admin@example.com}" \
+          --firstname "${AIRFLOW_ADMIN_FN:-admin}" \
+          --lastname "${AIRFLOW_ADMIN_LN:-admin}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD:-admin}" || true
+    restart: "no"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./dags/producer:/opt/airflow/dags/producer
+      - ./plugins:/opt/airflow/plugins
+    networks:
+      - docker_streaming
+
+  airflow_webserver:
+    image: *airflow-image              # <-- NO build HERE
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airflow_db:5432/${POSTGRES_DB}
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Berlin
+      - AIRFLOW__CORE__PARALLELISM=8
+      - AIRFLOW__CORE__DAG_CONCURRENCY=8
+      - AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG=1
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - AIRFLOW__WEBSERVER__WEB_SERVER_HOST=0.0.0.0
+      - AIRFLOW__WEBSERVER__WEB_SERVER_PORT=8080
+      - AIRFLOW_UID=${AIRFLOW_UID:-50000}
+      - TZ=${TZ:-Europe/Berlin}
+    env_file:
+    - .env.aws
+    user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
+    command: ["bash","-lc","exec airflow webserver"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health | grep -q '\"status\":.*\"healthy\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    ports: ["8080:8080"]
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./dags/producer:/opt/airflow/dags/producer
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - docker_streaming
+
+  airflow_scheduler:
+    image: *airflow-image              # <-- NO build HERE
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    env_file:
+    - .env.aws
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airflow_db:5432/${POSTGRES_DB}
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Berlin
+      - AIRFLOW__CORE__PARALLELISM=8
+      - AIRFLOW__CORE__DAG_CONCURRENCY=8
+      - AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG=1
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - AIRFLOW_UID=${AIRFLOW_UID:-50000}
+      - TZ=${TZ:-Europe/Berlin}
+    user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
+    command: ["bash","-lc","exec airflow scheduler"]
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname $(hostname) >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./dags/producer:/opt/airflow/dags/producer
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - docker_streaming
+
+
+  #  KAFKA (KRaft Mode) - Single Node (Broker + Controller in one process)
+  # ==========================================================================
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    environment:
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_NODE_ID=1
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:29093
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENERS=INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:19092,EXTERNAL://${DOCKER_HOST_IP:-localhost}:9092
+      - KAFKA_CLUSTER_ID=${KAFKA_CLUSTER_ID}
+      - CLUSTER_ID=${KAFKA_CLUSTER_ID} 
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data            # explicit
+      - KAFKA_LOG4J_LOGGERS=kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - kafka_network
+      - docker_streaming
+
+
+  # ============================================================================
+  #  KAFKA CONNECT (managed source/sink connectors)
+  # ============================================================================
+  kafka_connect:
+    image: confluentinc/cp-kafka-connect:7.6.1
+    depends_on:
+      - kafka
+    ports:
+      - "8083:8083"
+    environment:
+      - CONNECT_BOOTSTRAP_SERVERS=kafka:19092
+      - CONNECT_REST_PORT=8083
+      - CONNECT_GROUP_ID=connect-cluster
+      - CONNECT_CONFIG_STORAGE_TOPIC=_connect-configs
+      - CONNECT_OFFSET_STORAGE_TOPIC=_connect-offsets
+      - CONNECT_STATUS_STORAGE_TOPIC=_connect-status
+      - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
+      - CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false
+      - CONNECT_PLUGIN_PATH=/usr/share/java,/etc/kafka-connect/jars
+      - CONNECT_LOG4J_ROOT_LOGLEVEL=INFO
+      - CONNECT_LOG4J_LOGGERS=org.reflections=ERROR
+      - CONNECT_OFFSET_FLUSH_INTERVAL_MS=5000
+      - CONNECT_REST_ADVERTISED_HOST_NAME=kafka_connect
+      - CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1
+    networks:
+      - kafka_network
+      - docker_streaming
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8083/connectors >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================================================
+  #  SCHEMA REGISTRY (works with KRaft; no ZooKeeper required)
+  # ============================================================================
+  kafka_schema_registry:
+    image: confluentinc/cp-schema-registry:7.6.1
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=${SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS:-PLAINTEXT://kafka:19092}
+      - SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL=${SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL:-PLAINTEXT}
+      - SCHEMA_REGISTRY_HOST_NAME=${SCHEMA_REGISTRY_HOST_NAME:-kafka_schema_registry}
+      - SCHEMA_REGISTRY_LISTENERS=${SCHEMA_REGISTRY_LISTENERS:-http://0.0.0.0:8081}
+      - SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR=1
+    networks:
+      - kafka_network
+      - docker_streaming
+
+  # ============================================================================
+  #  KAFKA UI (Provectus)
+  # ============================================================================
+  kafka_ui:
+    image: provectuslabs/kafka-ui:v0.7.2            # pin to a fixed tag; avoid :latest
+    container_name: kafka-ui-1
+    depends_on:
+      - kafka
+      - kafka_schema_registry
+      - kafka_connect
+    ports:
+      - "8888:8080"                                  # http://localhost:8888
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=dev-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:19092
+      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://kafka_schema_registry:8081
+      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME=connect
+      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=http://kafka_connect:8083
+      - DYNAMIC_CONFIG_ENABLED=true
+    networks:
+      - kafka_network
+      - docker_streaming
+
+  # ============================================================================
+  #  APACHE SPARK MASTER (Standalone mode)
+  # ============================================================================
+# ----------------------------------------------------------------------------
+# SPARK MASTER
+# ----------------------------------------------------------------------------
+  spark-master:
+    image: &spark-image custom-spark
+    build: &spark-build
+      context: ./spark                 # directory containing Dockerfile above
+      dockerfile: Dockerfile           # or whatever the filename actually is
+    container_name: spark-master
+    env_file:
+      - .env.aws
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      # Make S3A use env credentials (ACCESS_KEY/SECRET/SESSION_TOKEN)
+      - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+    ports:
+      - "8085:8080"
+    volumes:
+      - ./:/home
+      - spark_data:/opt/bitnami/spark/data
+    networks:
+      - docker_streaming
+      - kafka_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080 | grep -q 'Spark Master'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+# ----------------------------------------------------------------------------
+# SPARK WORKER 1
+# ----------------------------------------------------------------------------
+  spark_worker_1:
+    image: *spark-image
+    depends_on: [spark-master]
+    env_file:
+      - .env.aws
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+    ports:
+      - "8086:8081"
+    networks:
+      - docker_streaming
+      - kafka_network
+
+# ----------------------------------------------------------------------------
+# SPARK WORKER 2
+# ----------------------------------------------------------------------------
+  spark_worker_2:
+    image: *spark-image
+    depends_on: [spark-master]
+    env_file:
+      - .env.aws
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+    ports:
+      - "8087:8081"
+    networks:
+      - docker_streaming
+      - kafka_network
+# ----------------------------------------------------------------------------
+# SPARK STREAMING JOB (driver runs here)
+# ----------------------------------------------------------------------------
+  spark_streaming:
+    image: *spark-image
+    depends_on:
+      spark-master:
+        condition: service_healthy
+      spark_worker_1:
+        condition: service_started
+      spark_worker_2:
+        condition: service_started
+      kafka:
+        condition: service_started
+    env_file:
+      - .env.aws
+    environment:
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_OUTPUT_PREFIX=${S3_OUTPUT_PREFIX:-names}
+      - S3_CHECKPOINT_PREFIX=${S3_CHECKPOINT_PREFIX:-checkpoints/names}
+      - S3_REGION=${S3_REGION:-eu-west-2}
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - S3_PATH_STYLE_ACCESS=${S3_PATH_STYLE_ACCESS:-}
+      # Uncomment the next line when you want the container to reuse a named
+      # AWS profile from the mounted ~/.aws directory (for example, AWS SSO).
+      # - AWS_PROFILE=${AWS_PROFILE:-default}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:19092
+      - KAFKA_TOPIC=names_topic
+      # Ensure S3A reads env credentials
+      - SPARK_SUBMIT_OPTS=-Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+    command:
+      - bash
+      - -lc
+      - |
+        /opt/bitnami/spark/bin/spark-submit \
+          --master spark://spark-master:7077 \
+          /opt/spark/app/spark_processing.py
+    volumes:
+      - ./spark/app:/opt/spark/app
+      - spark_data:/opt/bitnami/spark/data
+      # Bind-mount your host AWS configuration directory when you depend on
+      # short-lived credentials generated by the AWS CLI (for example, SSO or
+      # AssumeRole). Leave it commented when credentials are provided solely via
+      # environment variables.
+      # - ~/.aws:/root/.aws:ro
+    restart: unless-stopped
+    networks:
+      - docker_streaming
+      - kafka_network
+
+
+volumes:
+  spark_data:
+  kafka_data: {}  
+
+airflow.sh:
+
+#!/usr/bin/env bash
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+#
+# Run airflow command in container
+#
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+set -euo pipefail
+
+# check is there a docker-compose command, if not, use "docker compose" instead.
+if [ -x "$(command -v docker-compose)" ]; then
+    dc=docker-compose
+else
+    dc="docker compose"
+fi
+
+export COMPOSE_FILE="${PROJECT_DIR}/docker-compose.yaml"
+if [ $# -gt 0 ]; then
+    exec $dc run --rm airflow_webserver "${@}"
+else
+    exec $dc run --rm airflow_webserver
+fi
+

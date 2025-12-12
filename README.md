@@ -219,7 +219,7 @@ The compose bundle handles dependency installation, Airflow database migrations,
 
 - **Airflow**: `airflow-init` runs database migrations and provisions the admin account defined in `.env`. The scheduler and webserver containers then start, unpause `name_stream_dag`, and trigger the producer every five minutes.
 - **Kafka**: the producer task calls `ensure_topic(...)`, so the `names_topic` topic is created on-demand—there is no need to pre-create it in the UI for local demos.
-- **Spark**: the `spark_streaming` service submits `spark_processing.py` to the Spark master as soon as Kafka is healthy. Required connector JARs are baked into the custom image, so Structured Streaming can immediately sink newline-delimited JSON data to Amazon S3.
+- **Spark**: the `spark_streaming` service submits `spark_processing.py` to the Spark master as soon as Kafka is healthy. Required connector JARs are baked into the custom image, so Structured Streaming can immediately sink newline-delimited JSON data to Amazon S3. The job uses **`availableNow`** mode, which drains the topic backlog and then exits; Docker restarts the container so each batch run reuses the existing checkpoint to pick up where it left off. This is intentional for batch-style demos—if you need a single continuously running stream, switch to `availableNow=False` and plan for a long-lived container.
 
 Once all services report healthy, the system continuously demonstrates the end-to-end path (Random User API → Kafka → Spark → S3) without extra intervention.
 

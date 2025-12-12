@@ -269,12 +269,12 @@ Once all services report healthy, the system continuously demonstrates the end-t
 ## C**hallenges and Troubleshooting**
 
 1. **Configuration Challenges**: Ensuring environment variables and configurations (like in the **`docker-compose.yaml`** file) are correctly set can be tricky. An incorrect setting might prevent services from starting or communicating.
-2. **Service Dependencies**: Services like Kafka or Airflow have dependencies on other services (e.g., Zookeeper for Kafka). Ensuring the correct order of service initialization is crucial.
+2. **Service Dependencies**: Kafka runs in KRaft mode with a single process acting as both controller and broker, so focus on confirming that core container is healthy before starting dependents like Schema Registry or Kafka Connect.
 3. **Airflow DAG Errors**: Syntax or logical errors in the DAG file (**`kafka_stream_dag.py`**) can prevent Airflow from recognizing or executing the DAG correctly.
 4. **Data Transformation Issues**: The data transformation logic in the Python script might not always produce expected results, especially when handling various data inputs from the Random Name API.
 5. **Spark Dependencies**: Ensuring all required JARs are available and compatible is essential for Spark's streaming job. Missing or incompatible JARs can lead to job failures.
-6. **Kafka Topic Management**: Creating topics with the correct configuration (like replication factor) is essential for data durability and fault tolerance.
-7. **Networking Challenges**: Docker networking, as set up in the **`docker-compose.yaml`**, must correctly facilitate communication between services, especially for Kafka brokers and Zookeeper.
+6. **Kafka Topic Management**: Creating topics with the correct configuration—such as a replication factor of 1 for the single KRaft broker—is essential for data durability and predictable behavior.
+7. **Listener Configuration**: Kafka listeners must align with the advertised addresses in `docker-compose.yaml` so that internal services (Spark, Schema Registry, Kafka UI) can connect without retries.
 8. **S3 Bucket Permissions**: Ensuring correct permissions when writing to S3 is crucial. Misconfigured permissions can prevent Spark from saving data to the bucket.
 9. **Deprecation Warnings**: The provided logs show deprecation warnings, indicating that some methods or configurations used might become obsolete in future versions.
 10. **PostgreSQL Crash Recovery Delays**: When the `airflow_db` container is restarted after an abrupt shutdown, PostgreSQL can spend a minute or more replaying its write-ahead log. The compose file now gives the database up to 90 seconds before health checks start and increases the retry budget, but if you still see `the database system is starting up` errors you may need to wait a little longer or remove the `airflow_pgdata` directory to let Postgres initialize from scratch.

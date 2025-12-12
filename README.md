@@ -128,7 +128,7 @@ Completing the four steps above proves the full path "API → Kafka → Spark �
 
 > ℹ️ Both the `airflow_webserver` and `airflow_scheduler` services run with the same user ID/group ID mapping derived from the `AIRFLOW_UID`/`AIRFLOW_GID` values in `.env`. This prevents the scheduler from failing with permission errors when the mounted `dags/`, `logs/`, or `plugins/` directories are owned by `root`, and ensures that the Airflow components come up cleanly together. The only Airflow port published to the host is `8080`, and every other service in the stack binds to a distinct host port, so there are no container port conflicts when you run the full compose file.
 
-## **Breaking Down the projects Files**
+## **Breaking Down the project files**
 
 ### 1)  ****`docker-compose.yml`**
 
@@ -168,7 +168,7 @@ Two networks anchor our services:
 - **Kafka Network (`kafka_network`):** Dedicated to Kafka.
 - **Default Network (`default`):** Externally named as **`docker_streaming`**.
 
-### 3) **Published Service Ports**
+### 2) **Published Service Ports**
 
 Each service that exposes a user-facing port is mapped to a unique host port so that the stack can run without conflicts on a single Docker host. The current bindings from `docker-compose.yaml` are summarised below:
 
@@ -185,7 +185,7 @@ Each service that exposes a user-facing port is mapped to a unique host port so 
 
 > ✅ **No host port conflicts** – every published port is distinct, so you can run the entire stack simultaneously without manual remapping. If you introduce new services, continue assigning unused host ports to maintain this guarantee.
 
-### 2)  **`kafka_stream_dag.py`**
+### 3)  **`kafka_stream_dag.py`**
 
 This file primarily defines an Airflow Directed Acyclic Graph (DAG) that handles the streaming of data to a Kafka topic.
 
@@ -206,7 +206,7 @@ Essential modules and functions are imported, notably the Airflow DAG and Python
 
 A single task, **`kafka_stream_task`**, is defined using the PythonOperator. This task calls the **`initiate_stream`** function, effectively streaming data to Kafka when the DAG runs.
 
-### 3)  **`kafka_streaming_service.py`**
+### 4)  **`kafka_streaming_service.py`**
 
 **1. Imports & Configuration**
 
@@ -234,7 +234,7 @@ The **`transform_user_data`** function formats the raw user data for Kafka strea
 
 When the script is run directly, the **`initiate_stream`** function is executed, streaming data for the duration specified by **`STREAMING_DURATION`**.
 
-### 3)  **`spark_processing.py`**
+### 5)  **`spark_processing.py`**
 
 **1. Imports & Logging Initialization**
 

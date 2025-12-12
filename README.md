@@ -170,25 +170,25 @@ Essential libraries are imported, and constants are set, such as the API endpoin
 
 **2. User Data Retrieval**
 
-The **`retrieve_user_data`** function fetches random user details from the specified API endpoint.
+The **`retrieve_user_data`** function fetches random user details from the specified API endpoint, with a synthetic fallback when the API is unreachable.【F:dags/producer/kafka_streaming_service.py†L64-L103】
 
 **3. Data Transformation**
 
-The **`transform_user_data`** function formats the raw user data for Kafka streaming, while **`encrypt_zip`** hashes the zip code to maintain user privacy.
+The **`transform_user_data`** function formats the raw user data for Kafka streaming, while **`encrypt_zip`** hashes the zip code to maintain user privacy.【F:dags/producer/kafka_streaming_service.py†L134-L171】
 
-**4. Kafka Configuration & Publishing**
+**4. Kafka Setup & Publishing**
 
-- **`configure_kafka`** sets up a Kafka producer.
-- **`publish_to_kafka`** sends transformed user data to a Kafka topic.
-- **`delivery_status`** provides feedback on whether data was successfully sent to Kafka.
+- **`ensure_topic`** checks whether the Kafka topic exists and creates it if necessary so downstream publishing does not fail.【F:dags/producer/kafka_streaming_service.py†L109-L130】
+- **`build_producer`** configures a Kafka producer with idempotence, `acks=all`, gzip compression, and light batching to balance safety and throughput.【F:dags/producer/kafka_streaming_service.py†L180-L195】
+- **`publish_once`** serializes the transformed record and enqueues it to Kafka, using **`delivery_status`** as the per-message callback to log delivery results.【F:dags/producer/kafka_streaming_service.py†L197-L213】
 
 **5. Main Streaming Function**
 
-**`initiate_stream`** orchestrates the entire process, retrieving, transforming, and publishing user data to Kafka at regular intervals.
+**`initiate_stream`** orchestrates the end-to-end loop: it first runs **`ensure_topic`** and **`build_producer`**, then repeatedly retrieves, transforms, and publishes records on the configured cadence before flushing the producer.【F:dags/producer/kafka_streaming_service.py†L216-L248】
 
 **6. Execution**
 
-When the script is run directly, the **`initiate_stream`** function is executed, streaming data for the duration specified by **`STREAMING_DURATION`**.
+When the script is run directly, the **`initiate_stream`** function is executed, streaming data for the duration specified by **`STREAMING_DURATION`**.【F:dags/producer/kafka_streaming_service.py†L251-L253】
 
 ### 5)  **`spark_processing.py`**
 

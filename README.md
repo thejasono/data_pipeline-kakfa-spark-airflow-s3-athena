@@ -107,7 +107,7 @@ Our project encompasses several services:
 - **Schema Registry (`kafka_schema_registry`):** Manages Kafka schemas.
 - **User Interface (`kafka_ui`):** Visual interface for Kafka insights.
 - **Spark:**
-- **Master Node (`spark_master`):** The central control node for Apache Spark.
+- **Master Node (`spark-master`):** The central control node for Apache Spark.
 - **Streaming submitter (`spark_streaming`):** A helper container that continuously submits the Structured Streaming job.
   
 

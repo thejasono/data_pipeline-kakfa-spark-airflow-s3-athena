@@ -141,24 +141,12 @@ Each service that exposes a user-facing port is mapped to a unique host port so 
 
 ### 3)  **`kafka_stream_dag.py`**
 
-This file primarily defines an Airflow Directed Acyclic Graph (DAG) that handles the streaming of data to a Kafka topic.
+This DAG (`name_stream_dag`) is scheduled every five minutes (`schedule="*/5 * * * *"`) with **`catchup=False`** and **`max_active_runs=1`**, ensuring only one execution is active at a time. It strings together four tasks:
 
-**1. Imports**
-
-Essential modules and functions are imported, notably the Airflow DAG and PythonOperator, as well as a custom **`initiate_stream`** function from **`kafka_streaming_service`**.
-
-**2. Configuration**
-
-- **DAG Start Date (`DAG_START_DATE`):** Sets when the DAG begins its execution.
-- **Default Arguments (`DAG_DEFAULT_ARGS`):** Configures the DAG's basic parameters, such as owner, start date, and retry settings.
-
-**3. DAG Definition**
-
-  A new DAG is created with the name **`name_stream_dag`**, configured to run every five minutes. It's designed not to run for any missed intervals (with **`catchup=False`**) and allows only one active run at a time.
-
-**4. Tasks**
-
-A single task, **`kafka_stream_task`**, is defined using the PythonOperator. This task calls the **`initiate_stream`** function, effectively streaming data to Kafka when the DAG runs.
+1. **Kafka health check** (`kafka_health_check`, `PythonOperator`): Ensures the Kafka broker is reachable and the topic exists.
+2. **S3 bucket health check** (`s3_bucket_health_check`, `PythonOperator`): Verifies the target bucket exists or creates it when missing, failing fast on access issues.
+3. **Kafka producer** (`stream_to_kafka_task`, `PythonOperator`): Calls `initiate_stream` from `producer.kafka_streaming_service` to publish random names to Kafka.
+4. **Spark consumer** (`spark_stream_to_s3`, `DockerOperator`): Runs `spark_processing.py` inside the `custom-spark` image to consume from Kafka and write to S3.
 
 ### 4)  **`kafka_streaming_service.py`**
 

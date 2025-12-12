@@ -92,7 +92,7 @@ The heart of our project setup lies in the **`docker-compose.yml`** file. It orc
 
 **1. Version**
 
-We're using Docker Compose file format version '3.7', ensuring compatibility with our services.
+The Compose stack uses the version-less Docker Compose specification (no `version:` key in `docker-compose.yaml`), which is supported by current Docker Compose releases.
 
 **2. Services**
 

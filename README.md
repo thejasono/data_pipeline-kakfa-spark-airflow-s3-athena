@@ -102,9 +102,7 @@ Our project encompasses several services:
 - **Database (`airflow_db`):** Uses PostgreSQL to store Airflow metadata and user information.
 - **Web Server (`airflow_webserver`):** Initiates the database and sets up an admin user.
 - **Kafka:**
-- **Zookeeper (`kafka_zookeeper`):** Manages broker metadata.
-- **Brokers:** Three instances (**`kafka_broker_1`**, **`2`**, and **`3`**).
-- **Base Configuration (`kafka_base`):** Common settings for brokers.
+- **Single broker (`kafka`):** Runs in KRaft mode as both controller and broker—no ZooKeeper or additional brokers required.
 - **Kafka Connect (`kafka_connect`):** Facilitates stream processing.
 - **Schema Registry (`kafka_schema_registry`):** Manages Kafka schemas.
 - **User Interface (`kafka_ui`):** Visual interface for Kafka insights.

@@ -205,7 +205,7 @@ The necessary libraries are imported, and a logging setup is created for better 
 
 **4. Streaming to S3**
 
-**`initiate_streaming_to_bucket`**: This function streams the transformed data to an S3 bucket in parquet format. It uses a checkpoint mechanism to ensure data integrity during streaming.
+**`initiate_streaming_to_bucket`**: Uses `foreachBatch` to write each micro-batch as newline-delimited JSON files and checkpoints state to the configured S3 path to protect against failures. The streaming query runs with `availableNow=True`, so it drains any backlog and then exits cleanly once the data is persisted.
 
 **5. Main Execution**
 

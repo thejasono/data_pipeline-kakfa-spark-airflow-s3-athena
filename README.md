@@ -15,6 +15,7 @@ For this project, we are leveraging a GitHub repository that hosts our entire se
 - Update `.env` with `S3_BUCKET`, `S3_OUTPUT_PREFIX`, `S3_CHECKPOINT_PREFIX`, and `S3_REGION`.
 - Provide credentials via `.env.aws` (or mount `~/.aws` and export `AWS_PROFILE`). The Windows helper `run_spark.ps1` can refresh `.env.aws` with SSO tokens automatically.
 - Optional: Set `S3_ENDPOINT`/`S3_PATH_STYLE_ACCESS` only when targeting a custom gateway or S3-compatible storage.
+  > ⚠️ **Airflow DAG S3 defaults** – `dags/kafka_stream_dag.py` currently hard-codes `namegeneratorbucket`, `names`, `checkpoints/names`, and `eu-west-2` for the bucket, output prefix, checkpoint prefix, and region. If you change the S3 settings in `.env`, update the DAG (or pass matching values via the Airflow environment) so the tasks and Spark job point to the same paths.
 
 **c. Setting Up the Project:**
 

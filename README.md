@@ -99,7 +99,7 @@ We're using Docker Compose file format version '3.7', ensuring compatibility wit
 Our project encompasses several services:
 
 - **Airflow:**
-- **Database (`airflow_db`):** Uses PostgreSQL[1](https://github.com/simardeep1792/Data-Engineering-Streaming-Project#:~:text=%E3%80%9059%E2%80%A0.env%E3%80%91%0A%0A%E3%80%9060%E2%80%A0README.md%E3%80%91%0A%0A%E3%80%9061%E2%80%A0airflow.sh%E3%80%91%0A%0A%E3%80%9062%E2%80%A0docker).
+- **Database (`airflow_db`):** Uses PostgreSQL to store Airflow metadata and user information.
 - **Web Server (`airflow_webserver`):** Initiates the database and sets up an admin user.
 - **Kafka:**
 - **Zookeeper (`kafka_zookeeper`):** Manages broker metadata.

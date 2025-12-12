@@ -86,9 +86,9 @@ Completing the four steps above proves the full path "API → Kafka → Spark �
 
 ## **Breaking Down the project files**
 
-### 1)  ****`docker-compose.yml`**
+### 1)  ****`docker-compose.yaml`**
 
-The heart of our project setup lies in the **`docker-compose.yml`** file. It orchestrates our services, ensuring smooth communication and initialization. Here's a breakdown:
+The heart of our project setup lies in the **`docker-compose.yaml`** file. It orchestrates our services, ensuring smooth communication and initialization. Here's a breakdown:
 
 **1. Version**
 

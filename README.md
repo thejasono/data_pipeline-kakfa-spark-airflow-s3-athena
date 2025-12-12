@@ -8,73 +8,29 @@ This project demonstrates an end-to-end data pipeline using Kafka for streaming,
 For this project, we are leveraging a GitHub repository that hosts our entire setup, making it easy for anyone to get started.
 
 **a. Docker:**
-Docker will be our primary tool to orchestrate and run various services.
-
-- **Installation:** Visit Docker's official website to download and install Docker Desktop for your OS.
-- **Verification:** Open a terminal or command prompt and execute `docker --version` to ensure a successful installation.
+- Install [Docker Desktop](https://docs.docker.com/get-docker/) (or Docker Engine) and confirm it works with `docker --version`.
 
 **b. Object storage (AWS S3):**
-The pipeline writes JSON micro-batches directly to Amazon S3. Create a bucket in your preferred region and update the environment files with the bucket name, region, and (if necessary) temporary credentials. When the stack starts, the Spark streaming container uses those settings to persist data without any additional bootstrap services.
-
-Populate **both** environment files before you start the stack:
-
-- `.env` already ships with sane defaults for service configuration (Airflow, Kafka, Spark). Update the S3 bucket/region entries to match your environment.
-- `.env.aws` contains the AWS credentials that the Spark containers load via the Compose `env_file` directive. The repository includes placeholder values so `docker compose` can start, but you must overwrite them with working credentials (for example, paste the output from `aws configure export-credentials --format env`). The Windows helper script `run_spark.ps1` automates this by logging in with AWS SSO, generating a fresh `.env.aws`, and running Compose with those short-lived credentials.
-
-#### Enabling Amazon S3 connectivity
-
-> 📝 **S3 setup checklist** – before you start Docker, work through the following quick list so the streaming job can talk to your bucket:
->
-> 1. Create or identify an S3 bucket in your preferred AWS region.
-> 2. Update `.env` with your bucket name, output prefixes, and region (`S3_BUCKET`, `S3_OUTPUT_PREFIX`, `S3_CHECKPOINT_PREFIX`, `S3_REGION`).
-> 3. Decide how the containers should authenticate:
->    - Paste long-lived access keys into `.env.aws` (or `.env`) as `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and, when required, `AWS_SESSION_TOKEN`/`AWS_REGION`; **or**
->    - Leave those values blank and mount your host `~/.aws` directory with an active AWS CLI profile. Export `AWS_PROFILE` if you need a non-default profile inside the containers.
-> 4. Only set `S3_ENDPOINT` and `S3_PATH_STYLE_ACCESS` in `.env` when you target a private gateway or S3-compatible appliance that needs path-style URLs.
-> 5. Run `docker compose up -d --build spark_streaming` (or restart the full stack) after editing the environment files so the Spark container reloads its configuration.
-
-1. **Confirm AWS-side access.** Double-check that the IAM user or role you plan to use can call `s3:PutObject`, `s3:ListBucket`, and `s3:GetBucketLocation` on the target bucket/prefix. Verifying the bucket name and region now prevents confusing Spark errors later.
-2. **Surface credentials to the containers.** Choose one of the following approaches so Spark can read credentials from the default provider chain:
-   - **Environment variables:** Add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and (if required) `AWS_SESSION_TOKEN` to `.env` or `.env.aws`. These keys are injected directly into the `spark_streaming` service via Compose.
-   - **IAM Identity Center/SSO or roles:** Leave the credential entries blank, uncomment the `~/.aws` bind mount in `docker-compose.yaml`, and (optionally) export `AWS_PROFILE` so the container uses your cached CLI login.
-3. **Set bucket and endpoint configuration.** Adjust `S3_BUCKET`, `S3_REGION`, and `S3_OUTPUT_PREFIX` in `.env`. Only populate `S3_ENDPOINT` and `S3_PATH_STYLE_ACCESS` when you target a private gateway or an S3-compatible appliance that requires path-style URLs.
-4. **Restart the streaming service to pick up changes.** Rebuild just the Spark streaming container after updating credentials or environment variables:
-
-   ```bash
-   docker compose up -d --build spark_streaming
-   ```
-
-5. **Post-change verification.** Before and after the restart, run a quick network sanity check (for example, `curl https://s3.<region>.amazonaws.com --head`) to ensure the Docker host can reach the endpoint. Once the stack is running, tail the streaming logs and watch your bucket for new JSON objects under the configured prefix:
-
-   ```bash
-   docker compose logs -f spark_streaming
-   ```
-
-   If your VPC endpoint only supports path-style access, remember to set `S3_PATH_STYLE_ACCESS=true` so Spark forms the correct URLs.
-
+- Create or reuse an S3 bucket in your preferred region.
+- Update `.env` with `S3_BUCKET`, `S3_OUTPUT_PREFIX`, `S3_CHECKPOINT_PREFIX`, and `S3_REGION`.
+- Provide credentials via `.env.aws` (or mount `~/.aws` and export `AWS_PROFILE`). The Windows helper `run_spark.ps1` can refresh `.env.aws` with SSO tokens automatically.
+- Optional: Set `S3_ENDPOINT`/`S3_PATH_STYLE_ACCESS` only when targeting a custom gateway or S3-compatible storage.
 
 **c. Setting Up the Project:**
 
-- **Clone the Repository:** First, you'll need to clone the project from its GitHub repository using the following command:
+- Clone and enter the repository:
 
 ```
 git clone https://github.com/<your-username>/api-kafka-spark-airflow-s3-athena.git
-```
-
-Navigate to the project directory:
-
-```
 cd api-kafka-spark-airflow-s3-athena
 ```
 
-- **Deploy Services using `docker-compose`:** Within the project directory, you'll find a `docker-compose.yml` file. This file describes all the services and their
+- Start the stack (create the network once):
 
 ```
-docker network create docker_streaming  # create once, safe to rerun
+docker network create docker_streaming  # safe to rerun
 docker compose up -d --build
 ```
-
-Running the stack in detached mode (`-d`) lets Docker start every container in the background, and the `--build` flag ensures the images are rebuilt if you have changed any of the source files since your last run. The command orchestrates the start-up of all necessary services like Kafka, Spark, Airflow, etc., in Docker containers. If you only need to restart the stack without rebuilding the images, you can omit `--build` on subsequent runs.
 
 > 🗒️ **PostgreSQL client access** – the `airflow_db` service now mounts `postgres/conf/pg_hba.conf` so that other containers on the Docker network can authenticate with SCRAM-SHA-256. If you initialised the database with an older version of the configuration, remove the local `./airflow_pgdata` directory before running `docker compose up` so Postgres picks up the updated access rules.
 

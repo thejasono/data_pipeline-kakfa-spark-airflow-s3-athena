@@ -157,7 +157,7 @@ with DAG(
             "S3_REGION": "eu-west-2",
         },
         auto_remove=True,
-        execution_timeout=timedelta(minutes=5),
+        execution_timeout=timedelta(minutes=15),
     )
 
 
